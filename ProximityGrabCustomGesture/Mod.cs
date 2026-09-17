@@ -5,7 +5,7 @@ namespace ProximityGrabCustomGesture;
 
 public class ProximityGrabCustomGestureMod : ResoniteMod
 {
-    internal const string VERSION_CONSTANT = "0.5.0";
+    internal const string VERSION_CONSTANT = "0.6.0";
 
     // RML configuration keys (persisted to rml_config/ProximityGrabCustomGesture.json,
     // editable via config-manager UIs or by editing the JSON while the game is stopped).
@@ -38,6 +38,14 @@ public class ProximityGrabCustomGestureMod : ResoniteMod
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> FistMinReleaseDegreesKey =
         new("FistMinReleaseDegrees", "Per-finger minimum curl to hold fist grab (degrees)", () => 70f, valueValidator: IsNonNegativeFinite);
+
+    [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<float> FistMinJointEngageDegreesKey =
+        new("FistMinJointEngageDegrees", "Per-joint minimum curl to engage fist grab (degrees)", () => 30f, valueValidator: IsNonNegativeFinite);
+
+    [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<float> FistMinJointReleaseDegreesKey =
+        new("FistMinJointReleaseDegrees", "Per-joint minimum curl to hold fist grab (degrees)", () => 20f, valueValidator: IsNonNegativeFinite);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> PinchEngageDistanceKey =
@@ -78,6 +86,8 @@ public class ProximityGrabCustomGestureMod : ResoniteMod
     internal static float FistReleaseDegrees = FistReleaseDegreesKey.Value;
     internal static float FistMinEngageDegrees = FistMinEngageDegreesKey.Value;
     internal static float FistMinReleaseDegrees = FistMinReleaseDegreesKey.Value;
+    internal static float FistMinJointEngageDegrees = FistMinJointEngageDegreesKey.Value;
+    internal static float FistMinJointReleaseDegrees = FistMinJointReleaseDegreesKey.Value;
 
     // Pinch gesture (scale-normalized index <-> thumb tip distance, m)
     internal static float PinchEngageDistance = PinchEngageDistanceKey.Value;
@@ -125,6 +135,8 @@ public class ProximityGrabCustomGestureMod : ResoniteMod
         FistReleaseDegrees = FistReleaseDegreesKey.Value;
         FistMinEngageDegrees = FistMinEngageDegreesKey.Value;
         FistMinReleaseDegrees = FistMinReleaseDegreesKey.Value;
+        FistMinJointEngageDegrees = FistMinJointEngageDegreesKey.Value;
+        FistMinJointReleaseDegrees = FistMinJointReleaseDegreesKey.Value;
         PinchEngageDistance = PinchEngageDistanceKey.Value;
         PinchReleaseDistance = PinchReleaseDistanceKey.Value;
         PinchMaxIndexCurlDegrees = PinchMaxIndexCurlDegreesKey.Value;

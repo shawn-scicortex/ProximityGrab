@@ -93,11 +93,14 @@ internal static class FistGesture
         }
         float avg = AverageCurlDegrees(hand!);
         float min = MinCurlDegrees(hand!);
+        float minJoint = MinJointCurlDegrees(hand!);
         bool engaged = prevEngaged
             ? avg > ProximityGrabCustomGestureMod.FistReleaseDegrees
               && min > ProximityGrabCustomGestureMod.FistMinReleaseDegrees
+              && minJoint > ProximityGrabCustomGestureMod.FistMinJointReleaseDegrees
             : avg > ProximityGrabCustomGestureMod.FistEngageDegrees
-              && min > ProximityGrabCustomGestureMod.FistMinEngageDegrees;
+              && min > ProximityGrabCustomGestureMod.FistMinEngageDegrees
+              && minJoint > ProximityGrabCustomGestureMod.FistMinJointEngageDegrees;
         prevEngaged = engaged;
         return engaged;
     }
@@ -182,7 +185,49 @@ internal static class FistGesture
         return MathX.Min(CurlDegrees(hand.Index), CurlDegrees(hand.Middle), CurlDegrees(hand.Ring), CurlDegrees(hand.Pinky));
     }
 
+    // Smallest valid per-joint curl across the four fingers; untracked joints are skipped.
+    // NaN (fail-safe: blocks the gate) only if no finger yields a valid joint.
+    private static float MinJointCurlDegrees(Hand hand)
+    {
+        Span<float> joints = stackalloc float[3];
+        float min = float.PositiveInfinity;
+        int valid = 0;
+        AccumulateMinJoint(hand.Index, joints, ref min, ref valid);
+        AccumulateMinJoint(hand.Middle, joints, ref min, ref valid);
+        AccumulateMinJoint(hand.Ring, joints, ref min, ref valid);
+        AccumulateMinJoint(hand.Pinky, joints, ref min, ref valid);
+        return valid > 0 ? min : float.NaN;
+    }
+
+    private static void AccumulateMinJoint(Finger finger, Span<float> joints, ref float min, ref int valid)
+    {
+        int count = JointCurlDegrees(finger, joints);
+        for (int i = 0; i < count - 2 && i < joints.Length; i++)
+        {
+            if (float.IsNaN(joints[i]))
+                continue;
+            if (joints[i] < min)
+                min = joints[i];
+            valid++;
+        }
+    }
+
     private static float CurlDegrees(Finger finger)
+    {
+        Span<float> joints = stackalloc float[3];
+        int count = JointCurlDegrees(finger, joints);
+        if (count < 3)
+            return float.NaN;
+
+        float sum = 0f;
+        for (int i = 0; i < count - 2; i++)
+            sum += joints[i];
+        return sum;
+    }
+
+    // Per-joint curl angles (MCP/PIP/DIP when fully tracked); returns tracked segment count.
+    // Joints beyond count - 2 are untouched; count < 3 means no valid angles.
+    private static int JointCurlDegrees(Finger finger, Span<float> joints)
     {
         Span<float3> positions = stackalloc float3[5];
         int count = 0;
@@ -192,17 +237,18 @@ internal static class FistGesture
         if (finger.Distal.IsTracking) positions[count++] = finger.Distal.Position;
         if (finger.Tip.IsTracking) positions[count++] = finger.Tip.Position;
         if (count < 3)
-            return float.NaN;
+            return count;
 
         float3 previous = (positions[1] - positions[0]).Normalized;
-        float sum = 0f;
+        int j = 0;
         for (int i = 1; i < count - 1; i++)
         {
             float3 current = (positions[i + 1] - positions[i]).Normalized;
-            sum += MathX.Angle(in previous, in current);
+            if (j < joints.Length)
+                joints[j++] = MathX.Angle(in previous, in current);
             previous = current;
         }
-        return sum;
+        return count;
     }
 
     private static void DrawDebug(InteractionHandler handler, Hand? hand, ProximityGrabState state)
@@ -227,21 +273,28 @@ internal static class FistGesture
                 p = p.Substring(0, 36);
             float fistAvg = AverageCurlDegrees(hand);
             float fistMin = MinCurlDegrees(hand);
+            float fistMinJoint = MinJointCurlDegrees(hand);
             float fistThreshold = state.FistEngaged
                 ? ProximityGrabCustomGestureMod.FistReleaseDegrees
                 : ProximityGrabCustomGestureMod.FistEngageDegrees;
-            string fistLine = $"{side} Fist avg:{FormatDegrees(fistAvg)}/{fistThreshold:0} min:{FormatDegrees(fistMin)} eng:{(state.FistEngaged ? "Y" : "N")}";
+            string fistLine = $"{side} Fist avg:{FormatDegrees(fistAvg)}/{fistThreshold:0} min:{FormatDegrees(fistMin)} jm:{FormatDegrees(fistMinJoint)} eng:{(state.FistEngaged ? "Y" : "N")}";
             string pinchLine = $"{side} Pinch d:{distance:F3} idx:{CurlDegrees(hand.Index):F0}/{ProximityGrabCustomGestureMod.PinchMaxIndexCurlDegrees:0} th:{ThumbTrackingCount(hand)} eng:{(state.PinchEngaged ? "Y" : "N")}";
+            Span<float> indexJoints = stackalloc float[3];
+            int indexTracked = JointCurlDegrees(hand.Index, indexJoints);
+            string indexLine = $"{side} Idx j:{FormatJoint(indexJoints, indexTracked, 0)}/{FormatJoint(indexJoints, indexTracked, 1)}/{FormatJoint(indexJoints, indexTracked, 2)} tot:{FormatDegrees(CurlDegrees(hand.Index))} n:{indexTracked}";
             Slot frame = root.Slot;
             float3 wristWorld = frame.LocalPointToGlobal(hand.Wrist.Position);
             floatQ wristRot = frame.LocalRotationToGlobal(hand.Wrist.Rotation);
             float3 wristMarker = wristWorld;
             float3 debugAnchorLine = wristMarker + wristRot * float3.Up * 0.12f;
             float3 debugAnchorLine2 = debugAnchorLine + wristRot * float3.Up * 0.11f;
+            float3 debugAnchorLine3 = debugAnchorLine2 + wristRot * float3.Up * 0.11f;
             var fistColor = state.FistEngaged ? colorX.Green : colorX.White;
             var pinchColor = state.PinchEngaged ? colorX.Green : colorX.White;
+            var indexColor = colorX.White;
             handler.Debug.Text(in debugAnchorLine, fistLine, 0.08f, in fistColor, 0f, true);
             handler.Debug.Text(in debugAnchorLine2, pinchLine, 0.08f, in pinchColor, 0f, true);
+            handler.Debug.Text(in debugAnchorLine3, indexLine, 0.08f, in indexColor, 0f, true);
             if (hand.Index.Tip.IsTracking && hand.Thumb.Tip.IsTracking)
             {
                 float3 indexMarker = wristWorld + wristRot * hand.Index.Tip.Position;
@@ -259,6 +312,16 @@ internal static class FistGesture
                 handler.Debug.Text(in wristMarker, "W", size, in cWrist, 0f, true);
                 handler.Debug.Sphere(in originMarker, ProximityGrabCustomGestureMod.PrecisionMaxRadius, in cSphere);
             }
+            // Fist grab sphere: mirrors the engine non-laser overlap test
+            // (InteractionHandler GRAB_RADIUS at Grabber slot, scaled by user root).
+            var grabber = handler.Grabber;
+            if (grabber != null)
+            {
+                float3 grabCenter = grabber.Slot.GlobalPosition;
+                float grabRadius = InteractionHandler.GRAB_RADIUS * (handler.LocalUserRoot?.GlobalScale ?? 1f);
+                colorX fistSphere = colorX.Cyan.SetA(0.08f);
+                handler.Debug.Sphere(in grabCenter, grabRadius, in fistSphere);
+            }
         }
         catch (Exception e)
         {
@@ -268,6 +331,9 @@ internal static class FistGesture
 
     private static string FormatDegrees(float degrees) =>
         float.IsNaN(degrees) ? "---" : $"{degrees:F0}";
+
+    private static string FormatJoint(Span<float> joints, int trackedCount, int joint) =>
+        joint < trackedCount - 2 ? $"{joints[joint]:F0}" : "-";
 
     private static int ThumbTrackingCount(Hand hand)
     {
