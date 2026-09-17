@@ -15,8 +15,6 @@
     <ResonitePath>$(MSBuildThisFileDirectory)Resonite/</ResonitePath>
     <ResonitePath Condition="Exists('C:\Program Files (x86)\Steam\steamapps\common\Resonite\')">C:\Program Files (x86)\Steam\steamapps\common\Resonite\</ResonitePath>
     <ResonitePath Condition="Exists('$(HOME)/.steam/steam/steamapps/common/Resonite/')">$(HOME)/.steam/steam/steamapps/common/Resonite/</ResonitePath>
-    <ResonitePath Condition="Exists('$(USERPROFILE)\src\delphium\')">$(USERPROFILE)\src\delphium\</ResonitePath>
-    <ResonitePath Condition="Exists('$(USERPROFILE)\src\delphium_grab\')">$(USERPROFILE)\src\delphium_grab\</ResonitePath>
   </PropertyGroup>
 
   <Target Name="DebugResonitePath" BeforeTargets="Build">
