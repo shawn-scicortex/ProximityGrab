@@ -9,8 +9,6 @@ namespace ProximityGrabCustomGesture;
 
 internal static class Methods
 {
-    private static MethodInfo? _grabStock;
-
     internal static Harmony? HarmonyInstance;
 
     private static readonly MethodInfo[] GrabMethods = typeof(InteractionHandler)
@@ -23,8 +21,6 @@ internal static class Methods
     internal static readonly MethodInfo EndGrab = AccessTools.Method(typeof(InteractionHandler), "EndGrab")!;
     internal static readonly MethodInfo GrabNoLaser = GrabMethods.First(m => m.GetParameters().Length == 2 && m.GetParameters()[0].ParameterType == typeof(bool));
     internal static readonly FieldInfo GrabBlockActions = AccessTools.Field(typeof(InteractionHandler), "_grabBlockActions")!;
-
-    internal static MethodInfo GrabStock => _grabStock ??= (MethodInfo)Harmony.GetOriginalMethod(AccessTools.Method(typeof(InteractionHandler), "Grab", Type.EmptyTypes))!;
 }
 
 // Runs the fist-gesture detector every frame for the local user.
@@ -53,8 +49,7 @@ internal static class Patch_InteractionHandler_OnCommonUpdate
 // No hands tracked: stock behavior passed straight through.
 // Fist gesture: proximity grab only (never laser).
 // Pinch gesture: precision grab at the tracked index/thumb pinch point.
-// Other grab commands while hands tracked (gamepad/keyboard keep their bindings): stock default —
-// laser grab at the pointer when active, otherwise the grab sphere.
+// Other grab commands while hands tracked (gamepad/keyboard keep their bindings): stock path.
 [HarmonyPatch(typeof(InteractionHandler))]
 [HarmonyPatch("Grab")]
 [HarmonyPatch(new System.Type[0])]
@@ -64,18 +59,27 @@ internal static class Patch_InteractionHandler_Grab
     private static bool Prefix(InteractionHandler __instance, ref bool __result)
     {
         var state = ProximityGrabState.Get(__instance);
-        if (state.GestureDriven)
+        if (!state.GestureDriven)
+            return true;
+        state.GestureDriven = false;
+        try
         {
-            state.GestureDriven = false;
             __result = state.ActiveGesture == GrabGestureKind.Pinch
                 ? PrecisionGrab.TryGrab(__instance, state.GestureHand)
                 : (bool)(Methods.GrabNoLaser.Invoke(__instance, new object[] { false, null! }) ?? false);
-            state.LastGrabResult = (bool)__result;
-            return false;
         }
-        if (!state.HasTrackingHands)
-            return true;
-        __result = (bool)(Methods.GrabStock.Invoke(__instance, null) ?? false);
+        catch (System.Exception e)
+        {
+            UniLog.Error($"ProximityGrabCustomGesture: gesture grab failed: {e}");
+            __result = false;
+        }
+        state.LastGrabResult = (bool)__result;
+        if (!state.LastGrabResult
+            && state.ActiveGesture == GrabGestureKind.Pinch
+            && ProximityGrabCustomGestureMod.DebugShowPinch)
+        {
+            UniLog.Log($"ProximityGrabCustomGesture: pinch grab failed: {PrecisionGrab.LastAttemptDetail}");
+        }
         return false;
     }
 }

@@ -52,6 +52,8 @@ internal static class FistGesture
         {
             fist = false;
             pinch = false;
+            state.GestureDriven = false;
+            state.GestureHand = null;
         }
 
         GrabGestureKind gesture = fist
@@ -223,7 +225,7 @@ internal static class FistGesture
                 distance = (indexTip - thumbTip).Magnitude / root.GlobalScale;
             }
             string side = handler.Side.Value == Chirality.Left ? "L" : "R";
-            string line = $"{side} d:{distance:F3} idx:{CurlDegrees(hand.Index):F0}/{ProximityGrabCustomGestureMod.PinchMaxIndexCurlDegrees:0} th:{ThumbTrackingCount(hand)} gr:{state.LastGrabResult} eng:{(state.PinchEngaged ? "Y" : "N")}";
+            string line = $"{side} d:{distance:F3} idx:{CurlDegrees(hand.Index):F0}/{ProximityGrabCustomGestureMod.PinchMaxIndexCurlDegrees:0} th:{ThumbTrackingCount(hand)} gr:{state.LastGrabResult} eng:{(state.PinchEngaged ? "Y" : "N")} p:{PrecisionGrab.LastAttemptDetail}";
             float3 anchor = root.Slot.LocalPointToGlobal(hand.Wrist.Position) + root.Slot.Up * (0.12f * root.GlobalScale);
             var color = state.PinchEngaged ? colorX.Green : colorX.White;
             handler.Debug.Text(in anchor, line, 0.08f, in color, 0f, true);

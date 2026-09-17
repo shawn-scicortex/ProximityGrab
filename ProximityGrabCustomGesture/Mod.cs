@@ -5,7 +5,7 @@ namespace ProximityGrabCustomGesture;
 
 public class ProximityGrabCustomGestureMod : ResoniteMod
 {
-    internal const string VERSION_CONSTANT = "0.3.3";
+    internal const string VERSION_CONSTANT = "0.3.5";
 
     // Gesture toggles
     internal static bool FistGrabEnabled = false;
