@@ -225,10 +225,32 @@ internal static class FistGesture
                 distance = (indexTip - thumbTip).Magnitude / root.GlobalScale;
             }
             string side = handler.Side.Value == Chirality.Left ? "L" : "R";
-            string line = $"{side} d:{distance:F3} idx:{CurlDegrees(hand.Index):F0}/{ProximityGrabCustomGestureMod.PinchMaxIndexCurlDegrees:0} th:{ThumbTrackingCount(hand)} gr:{state.LastGrabResult} eng:{(state.PinchEngaged ? "Y" : "N")} p:{PrecisionGrab.LastAttemptDetail}";
-            float3 anchor = root.Slot.LocalPointToGlobal(hand.Wrist.Position) + root.Slot.Up * (0.12f * root.GlobalScale);
+            string p = PrecisionGrab.LastAttemptDetail;
+            if (p.Length > 36)
+                p = p.Substring(0, 36);
+            string line = $"{side} d:{distance:F3} idx:{CurlDegrees(hand.Index):F0}/{ProximityGrabCustomGestureMod.PinchMaxIndexCurlDegrees:0} th:{ThumbTrackingCount(hand)} gr:{state.LastGrabResult} eng:{(state.PinchEngaged ? "Y" : "N")} p:{p}";
+            Slot frame = root.Slot;
+            float3 wristWorld = frame.LocalPointToGlobal(hand.Wrist.Position);
+            floatQ wristRot = frame.LocalRotationToGlobal(hand.Wrist.Rotation);
+            float3 wristMarker = wristWorld;
+            float3 debugAnchorLine = wristMarker + wristRot * float3.Up * 0.12f;
             var color = state.PinchEngaged ? colorX.Green : colorX.White;
-            handler.Debug.Text(in anchor, line, 0.08f, in color, 0f, true);
+            handler.Debug.Text(in debugAnchorLine, line, 0.08f, in color, 0f, true);
+            if (hand.Index.Tip.IsTracking && hand.Thumb.Tip.IsTracking)
+            {
+                float3 indexMarker = wristWorld + wristRot * hand.Index.Tip.Position;
+                float3 thumbMarker = wristWorld + wristRot * hand.Thumb.Tip.Position;
+                float3 originMarker = MathX.Lerp(indexMarker, thumbMarker, 0.5f);
+                float size = 0.06f;
+                colorX cIndex = colorX.Red;
+                colorX cThumb = colorX.Green;
+                colorX cOrigin = colorX.Yellow;
+                colorX cWrist = colorX.Blue;
+                handler.Debug.Text(in indexMarker, "I", size, in cIndex, 0f, true);
+                handler.Debug.Text(in thumbMarker, "T", size, in cThumb, 0f, true);
+                handler.Debug.Text(in originMarker, "O", size, in cOrigin, 0f, true);
+                handler.Debug.Text(in wristMarker, "W", size, in cWrist, 0f, true);
+            }
         }
         catch (Exception e)
         {

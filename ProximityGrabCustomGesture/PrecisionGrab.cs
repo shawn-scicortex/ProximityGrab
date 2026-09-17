@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text;
 using Elements.Core;
 using FrooxEngine;
 using HarmonyLib;
@@ -14,6 +15,8 @@ internal static class PrecisionGrab
     private static readonly FieldInfo GrabMaterial = AccessTools.Field(typeof(InteractionHandler), "_grabMaterial")!;
 
     internal static string LastAttemptDetail = "never";
+
+    private static bool _frameDiagLogged;
 
     public static bool TryGrab(InteractionHandler handler, Hand? hand)
     {
@@ -30,10 +33,24 @@ internal static class PrecisionGrab
             return false;
         }
 
-        var indexTip = root.Slot.LocalPointToGlobal(hand.Index.Tip.Position);
-        var thumbTip = root.Slot.LocalPointToGlobal(hand.Thumb.Tip.Position);
-        float scale = root.GlobalScale;
+        Slot frame = root.Slot;
+        float3 wristWorld = frame.LocalPointToGlobal(hand.Wrist.Position);
+        floatQ wristRot = frame.LocalRotationToGlobal(hand.Wrist.Rotation);
+        var indexTip = wristWorld + wristRot * hand.Index.Tip.Position;
+        var thumbTip = wristWorld + wristRot * hand.Thumb.Tip.Position;
+        float scale = 1f;
         float3 origin = MathX.Lerp(indexTip, thumbTip, 0.5f);
+
+        void LogDiag()
+        {
+            UniLog.Log("ProximityGrabCustomGesture: frame diag " + BuildFrameDiag(handler, hand, root, frame, indexTip, thumbTip, origin));
+        }
+
+        if (!_frameDiagLogged)
+        {
+            _frameDiagLogged = true;
+            LogDiag();
+        }
 
         List<ICollider> colliders = Pool.BorrowList<ICollider>();
         try
@@ -46,21 +63,36 @@ internal static class PrecisionGrab
             }
             if (colliders.Count == 0)
             {
-                LastAttemptDetail = "sweep=0";
+                LastAttemptDetail = $"sweep=0 s={scale:0.##}";
+                LogDiag();
                 return false;
             }
 
-            int resolved = CountResolvedGrabbables(handler, colliders);
+            var grabber = handler.Grabber;
+            Predicate<IGrabbable> filter = g => (bool)(FilterGrabbable.Invoke(handler, new object[] { g }) ?? false);
+
+            string firstRaw = "";
+            int raw = FindGrabbables(grabber, colliders, g => true, ref firstRaw);
+            if (raw == 0)
+            {
+                LastAttemptDetail = $"no-grabbable c={colliders.Count} {HitNames(colliders)}";
+                LogDiag();
+                return false;
+            }
+            string firstFiltered = "";
+            int resolved = FindGrabbables(grabber, colliders, filter, ref firstFiltered);
             if (resolved == 0)
             {
-                LastAttemptDetail = $"no-grabbable c={colliders.Count}";
+                LastAttemptDetail = $"filter-rejected c={colliders.Count} r={raw} [{firstRaw}] {HitNames(colliders)}";
+                LogDiag();
                 return false;
             }
 
-            bool grabbed = handler.Grabber?.Grab(colliders, g => FilterGrabbable.Invoke(handler, new object[] { g }) is true, true, true) ?? false;
+            bool grabbed = grabber?.Grab(colliders, filter, true, true) ?? false;
             if (!grabbed)
             {
-                LastAttemptDetail = $"grab=false c={colliders.Count} g={resolved}";
+                LastAttemptDetail = $"grab=false c={colliders.Count} g={resolved} [{firstFiltered}] {HitNames(colliders)}";
+                LogDiag();
                 return false;
             }
 
@@ -71,6 +103,7 @@ internal static class PrecisionGrab
         catch (System.Exception)
         {
             LastAttemptDetail = "exception";
+            LogDiag();
             throw;
         }
         finally
@@ -79,23 +112,20 @@ internal static class PrecisionGrab
         }
     }
 
-    private static int CountResolvedGrabbables(InteractionHandler handler, List<ICollider> colliders)
+    private static int FindGrabbables(Grabber? grabber, List<ICollider> colliders, Predicate<IGrabbable> filter, ref string firstName)
     {
+        if (grabber == null)
+            return 0;
         HashSet<IGrabbable> found = Pool.BorrowHashSet<IGrabbable>();
         try
         {
             foreach (var collider in colliders)
             {
-                var slot = collider.Slot;
-                while (slot != null)
+                IGrabbable? grabbable = grabber.FindGrabbableInParents(collider.Slot, filter);
+                if (grabbable != null && found.Add(grabbable))
                 {
-                    IGrabbable grabbable = slot.GetComponent<IGrabbable>();
-                    if (grabbable != null && (bool)(FilterGrabbable.Invoke(handler, new object[] { grabbable }) ?? false))
-                    {
-                        found.Add(grabbable);
-                        break;
-                    }
-                    slot = slot.Parent;
+                    if (firstName.Length == 0)
+                        firstName = GrabbableName(grabbable);
                 }
             }
             return found.Count;
@@ -104,6 +134,49 @@ internal static class PrecisionGrab
         {
             Pool.Return(ref found);
         }
+    }
+
+    private static string GrabbableName(IGrabbable grabbable)
+    {
+        Slot slot = grabbable.Slot;
+        if (slot == null)
+            return "?";
+        return slot.GetObjectRoot()?.Name ?? slot.Name;
+    }
+
+    private static string HitNames(List<ICollider> colliders)
+    {
+        HashSet<string> names = new();
+        StringBuilder sb = new StringBuilder();
+        sb.Append("hits:[");
+        foreach (var collider in colliders)
+        {
+            string name = collider.Slot?.Name ?? "?";
+            if (!names.Add(name))
+                continue;
+            if (names.Count > 1)
+                sb.Append(',');
+            sb.Append(name);
+            if (names.Count >= 6)
+                break;
+        }
+        sb.Append(']');
+        return sb.ToString();
+    }
+
+    private static string BuildFrameDiag(InteractionHandler handler, Hand hand, UserRoot root, Slot frame, in float3 indexTip, in float3 thumbTip, in float3 origin)
+    {
+        Slot rootSlot = root.Slot;
+        float3 indexRaw = hand.Index.Tip.Position;
+        float3 thumbRaw = hand.Thumb.Tip.Position;
+        float3 wristRaw = hand.Wrist.Position;
+        float3 rootRot = rootSlot.GlobalRotation.EulerAngles;
+        float3 wristRot = hand.Wrist.Rotation.EulerAngles;
+        float3 wristWorld = rootSlot.LocalPointToGlobal(wristRaw);
+        float3 wristRotWorld = rootSlot.LocalRotationToGlobal(hand.Wrist.Rotation).EulerAngles;
+        return $"frame:{frame.Name} rootPos:{rootSlot.GlobalPosition:F3} rot:{rootRot:F1} s:{root.GlobalScale:F3} "
+            + $"wrist:{wristRaw:F3} world:{wristWorld:F3} rot:{wristRot:F1} rotWorld:{wristRotWorld:F1} "
+            + $"idxRaw:{indexRaw:F3}->{indexTip:F3} thbRaw:{thumbRaw:F3}->{thumbTip:F3} origin:{origin:F3}";
     }
 
     private static void SetGrabMaterial(InteractionHandler handler)
