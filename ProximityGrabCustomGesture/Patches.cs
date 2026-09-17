@@ -52,6 +52,7 @@ internal static class Patch_InteractionHandler_OnCommonUpdate
 
 // No hands tracked: stock behavior passed straight through.
 // Fist gesture: proximity grab only (never laser).
+// Pinch gesture: precision grab at the tracked index/thumb pinch point.
 // Other grab commands while hands tracked (gamepad/keyboard keep their bindings): stock default —
 // laser grab at the pointer when active, otherwise the grab sphere.
 [HarmonyPatch(typeof(InteractionHandler))]
@@ -66,7 +67,9 @@ internal static class Patch_InteractionHandler_Grab
         if (state.GestureDriven)
         {
             state.GestureDriven = false;
-            __result = (bool)(Methods.GrabNoLaser.Invoke(__instance, new object[] { false, null! }) ?? false);
+            __result = state.ActiveGesture == GrabGestureKind.Pinch
+                ? PrecisionGrab.TryGrab(__instance, state.GestureHand)
+                : (bool)(Methods.GrabNoLaser.Invoke(__instance, new object[] { false, null! }) ?? false);
             return false;
         }
         if (!state.HasTrackingHands)
