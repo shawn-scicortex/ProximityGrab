@@ -5,7 +5,7 @@ namespace ProximityGrabCustomGesture;
 
 public class ProximityGrabCustomGestureMod : ResoniteMod
 {
-    internal const string VERSION_CONSTANT = "0.3.11";
+    internal const string VERSION_CONSTANT = "0.3.13";
 
     // Gesture toggles
     internal static bool FistGrabEnabled = false;
@@ -26,8 +26,8 @@ public class ProximityGrabCustomGestureMod : ResoniteMod
     internal static float PinchMaxIndexCurlDegrees = 140f;
 
     // Precision grab sphere sweep
-    internal static float PrecisionMinRadius = 0.005f;
-    internal static float PrecisionMaxRadius = 0.05f;
+    internal static float PrecisionMinRadius = 0.004f;
+    internal static float PrecisionMaxRadius = 0.04f;
     internal static float PrecisionRadiusStep = 0.01f;
 
     public override string Name => "ProximityGrabCustomGesture";

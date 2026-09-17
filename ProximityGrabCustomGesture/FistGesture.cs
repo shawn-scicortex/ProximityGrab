@@ -246,10 +246,12 @@ internal static class FistGesture
                 colorX cThumb = colorX.Green;
                 colorX cOrigin = colorX.Yellow;
                 colorX cWrist = colorX.Blue;
+                colorX cSphere = colorX.Orange.SetA(0.1f);
                 handler.Debug.Text(in indexMarker, "I", size, in cIndex, 0f, true);
                 handler.Debug.Text(in thumbMarker, "T", size, in cThumb, 0f, true);
                 handler.Debug.Text(in originMarker, "O", size, in cOrigin, 0f, true);
                 handler.Debug.Text(in wristMarker, "W", size, in cWrist, 0f, true);
+                handler.Debug.Sphere(in originMarker, ProximityGrabCustomGestureMod.PrecisionMaxRadius, in cSphere);
             }
         }
         catch (Exception e)
