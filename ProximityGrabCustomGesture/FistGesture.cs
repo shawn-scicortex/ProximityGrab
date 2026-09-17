@@ -61,7 +61,10 @@ internal static class FistGesture
         }
         else if (!state.ProximityGrabActive && engaged)
         {
+            if (handler.Grabber?.IsHoldingObjects == true)
+                return;
             state.ProximityGrabActive = true;
+            state.GestureDriven = true;
             Methods.StartGrab.Invoke(handler, null);
         }
         else if (state.ProximityGrabActive)

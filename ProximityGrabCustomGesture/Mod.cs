@@ -15,7 +15,9 @@ public class ProximityGrabCustomGestureMod : ResoniteMod
     public override void OnEngineInit()
     {
         Msg("ProximityGrabCustomGesture loading...");
-        new Harmony("YourName.ProximityGrabCustomGesture").PatchAll();
+        var harmony = new Harmony("YourName.ProximityGrabCustomGesture");
+        Methods.HarmonyInstance = harmony;
+        harmony.PatchAll();
         Msg("ProximityGrabCustomGesture loaded. Fist = proximity-only grab while hands are tracked.");
     }
 }

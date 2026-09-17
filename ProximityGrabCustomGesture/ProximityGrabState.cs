@@ -6,6 +6,7 @@ namespace ProximityGrabCustomGesture;
 internal sealed class ProximityGrabState
 {
     public bool ProximityGrabActive;
+    public bool GestureDriven;
     public bool HasTrackingHands;
     public bool Engaged;
 

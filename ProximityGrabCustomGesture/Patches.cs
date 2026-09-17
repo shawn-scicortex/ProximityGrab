@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using Elements.Core;
 using FrooxEngine;
@@ -8,6 +9,10 @@ namespace ProximityGrabCustomGesture;
 
 internal static class Methods
 {
+    private static MethodInfo? _grabStock;
+
+    internal static Harmony? HarmonyInstance;
+
     private static readonly MethodInfo[] GrabMethods = typeof(InteractionHandler)
         .GetMethods(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
         .Where(m => m.Name == "Grab")
@@ -18,6 +23,8 @@ internal static class Methods
     internal static readonly MethodInfo EndGrab = AccessTools.Method(typeof(InteractionHandler), "EndGrab")!;
     internal static readonly MethodInfo GrabNoLaser = GrabMethods.First(m => m.GetParameters().Length == 2 && m.GetParameters()[0].ParameterType == typeof(bool));
     internal static readonly FieldInfo GrabBlockActions = AccessTools.Field(typeof(InteractionHandler), "_grabBlockActions")!;
+
+    internal static MethodInfo GrabStock => _grabStock ??= (MethodInfo)Harmony.GetOriginalMethod(AccessTools.Method(typeof(InteractionHandler), "Grab", Type.EmptyTypes))!;
 }
 
 // Runs the fist-gesture detector every frame for the local user.
@@ -43,8 +50,10 @@ internal static class Patch_InteractionHandler_OnCommonUpdate
     }
 }
 
-// While hands are tracked: no fist -> suppress grab entirely; fist -> proximity grab only (never laser).
-// No hands tracked: stock behavior.
+// No hands tracked: stock behavior passed straight through.
+// Fist gesture: proximity grab only (never laser).
+// Other grab commands while hands tracked (gamepad/keyboard keep their bindings): stock default —
+// laser grab at the pointer when active, otherwise the grab sphere.
 [HarmonyPatch(typeof(InteractionHandler))]
 [HarmonyPatch("Grab")]
 [HarmonyPatch(new System.Type[0])]
@@ -54,20 +63,21 @@ internal static class Patch_InteractionHandler_Grab
     private static bool Prefix(InteractionHandler __instance, ref bool __result)
     {
         var state = ProximityGrabState.Get(__instance);
-        if (!state.HasTrackingHands)
-            return true;
-        if (!state.ProximityGrabActive)
+        if (state.GestureDriven)
         {
-            __result = false;
+            state.GestureDriven = false;
+            __result = (bool)(Methods.GrabNoLaser.Invoke(__instance, new object[] { false, null! }) ?? false);
             return false;
         }
-        __result = (bool)(Methods.GrabNoLaser.Invoke(__instance, new object[] { false, null! }) ?? false);
+        if (!state.HasTrackingHands)
+            return true;
+        __result = (bool)(Methods.GrabStock.Invoke(__instance, null) ?? false);
         return false;
     }
 }
 
-// While hands are tracked, remove the local user's built-in Grab binding so the grab command
-// itself can never trigger a grab; the fist detector is the only grab source.
+// While hands are tracked, unbind only VR-controller grab sources so the grab command can never fire
+// from a controller/skeleton false positive; gamepad and keyboard/mouse grab bindings are kept.
 [HarmonyPatch(typeof(InputInterface))]
 [HarmonyPatch("Bind")]
 [HarmonyPatch(new System.Type[] { typeof(InputGroup) })]
@@ -84,11 +94,19 @@ internal static class Patch_InputInterface_Bind
                 return;
             if (group.Owner is not InteractionHandler handler || !handler.IsOwnedByLocalUser)
                 return;
-            handlerInputs.Grab.ClearBindings();
+            RemoveControllerBindings(handlerInputs.Grab);
         }
         catch (System.Exception e)
         {
             UniLog.Error($"ProximityGrabCustomGesture: failed to strip grab bindings: {e}");
         }
+    }
+
+    internal static void RemoveControllerBindings(DigitalAction grab)
+    {
+        var bindingsField = typeof(InputAction<bool>).GetField("_bindings", BindingFlags.NonPublic | BindingFlags.Instance);
+        if (bindingsField?.GetValue(grab) is not List<InputBinding<bool>> bindings)
+            return;
+        bindings.RemoveAll(b => b.ImplicitDevice is ControllerBase);
     }
 }
