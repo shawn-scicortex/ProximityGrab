@@ -47,22 +47,19 @@ internal static class FistGesture
             handler.Input.InvalidateBindings();
         }
 
-        bool leftEngaged = UpdateHand(left, ref state.LeftEngaged);
-        bool rightEngaged = UpdateHand(right, ref state.RightEngaged);
+        Hand? ownHand = handler.Side.Value == Chirality.Left ? left : right;
+        bool engaged = UpdateHand(ownHand, ref state.Engaged);
 
         if (!state.HasTrackingHands)
         {
-            leftEngaged = false;
-            rightEngaged = false;
+            engaged = false;
         }
 
-        bool nowActive = leftEngaged || rightEngaged;
-
-        if (state.ProximityGrabActive && !nowActive)
+        if (state.ProximityGrabActive && !engaged)
         {
             Release(handler, state);
         }
-        else if (!state.ProximityGrabActive && nowActive)
+        else if (!state.ProximityGrabActive && engaged)
         {
             state.ProximityGrabActive = true;
             Methods.StartGrab.Invoke(handler, null);
@@ -140,8 +137,7 @@ internal static class FistGesture
     private static void Release(InteractionHandler handler, ProximityGrabState state)
     {
         state.ProximityGrabActive = false;
-        state.LeftEngaged = false;
-        state.RightEngaged = false;
+        state.Engaged = false;
         Methods.EndGrab.Invoke(handler, new object[] { false });
         Methods.GrabBlockActions.SetValue(handler, false);
     }

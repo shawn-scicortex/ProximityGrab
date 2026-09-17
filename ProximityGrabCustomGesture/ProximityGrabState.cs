@@ -7,8 +7,7 @@ internal sealed class ProximityGrabState
 {
     public bool ProximityGrabActive;
     public bool HasTrackingHands;
-    public bool LeftEngaged;
-    public bool RightEngaged;
+    public bool Engaged;
 
     private static readonly ConditionalWeakTable<InteractionHandler, ProximityGrabState> Table = new();
 
