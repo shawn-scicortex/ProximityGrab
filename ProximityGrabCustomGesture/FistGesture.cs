@@ -45,8 +45,10 @@ internal static class FistGesture
         }
 
         Hand? ownHand = handler.Side.Value == Chirality.Left ? left : right;
-        bool fist = ProximityGrabCustomGestureMod.FistGrabEnabled && UpdateHand(ownHand, ref state.Engaged);
-        bool pinch = ProximityGrabCustomGestureMod.PrecisionGrabEnabled && UpdatePinch(handler, ownHand, ref state.PinchEngaged, fist);
+        bool fistRaw = UpdateFist(ownHand, ref state.FistEngaged);
+        bool pinchRaw = UpdatePinch(handler, ownHand, ref state.PinchEngaged);
+        bool fist = ProximityGrabCustomGestureMod.FistGrabEnabled && fistRaw;
+        bool pinch = ProximityGrabCustomGestureMod.PrecisionGrabEnabled && pinchRaw && !fist;
 
         if (!state.HasTrackingHands)
         {
@@ -82,7 +84,7 @@ internal static class FistGesture
         }
     }
 
-    private static bool UpdateHand(Hand? hand, ref bool prevEngaged)
+    private static bool UpdateFist(Hand? hand, ref bool prevEngaged)
     {
         if (!IsUsable(hand))
         {
@@ -100,13 +102,8 @@ internal static class FistGesture
         return engaged;
     }
 
-    private static bool UpdatePinch(InteractionHandler handler, Hand? hand, ref bool prevEngaged, bool fistEngaged)
+    private static bool UpdatePinch(InteractionHandler handler, Hand? hand, ref bool prevEngaged)
     {
-        if (fistEngaged)
-        {
-            prevEngaged = false;
-            return false;
-        }
         if (!IsUsableForPinch(hand))
         {
             prevEngaged = false;
@@ -228,14 +225,23 @@ internal static class FistGesture
             string p = PrecisionGrab.LastAttemptDetail;
             if (p.Length > 36)
                 p = p.Substring(0, 36);
-            string line = $"{side} d:{distance:F3} idx:{CurlDegrees(hand.Index):F0}/{ProximityGrabCustomGestureMod.PinchMaxIndexCurlDegrees:0} th:{ThumbTrackingCount(hand)} gr:{state.LastGrabResult} eng:{(state.PinchEngaged ? "Y" : "N")} p:{p}";
+            float fistAvg = AverageCurlDegrees(hand);
+            float fistMin = MinCurlDegrees(hand);
+            float fistThreshold = state.FistEngaged
+                ? ProximityGrabCustomGestureMod.FistReleaseDegrees
+                : ProximityGrabCustomGestureMod.FistEngageDegrees;
+            string fistLine = $"{side} Fist avg:{FormatDegrees(fistAvg)}/{fistThreshold:0} min:{FormatDegrees(fistMin)} eng:{(state.FistEngaged ? "Y" : "N")}";
+            string pinchLine = $"{side} Pinch d:{distance:F3} idx:{CurlDegrees(hand.Index):F0}/{ProximityGrabCustomGestureMod.PinchMaxIndexCurlDegrees:0} th:{ThumbTrackingCount(hand)} eng:{(state.PinchEngaged ? "Y" : "N")}";
             Slot frame = root.Slot;
             float3 wristWorld = frame.LocalPointToGlobal(hand.Wrist.Position);
             floatQ wristRot = frame.LocalRotationToGlobal(hand.Wrist.Rotation);
             float3 wristMarker = wristWorld;
             float3 debugAnchorLine = wristMarker + wristRot * float3.Up * 0.12f;
-            var color = state.PinchEngaged ? colorX.Green : colorX.White;
-            handler.Debug.Text(in debugAnchorLine, line, 0.08f, in color, 0f, true);
+            float3 debugAnchorLine2 = debugAnchorLine + wristRot * float3.Up * 0.11f;
+            var fistColor = state.FistEngaged ? colorX.Green : colorX.White;
+            var pinchColor = state.PinchEngaged ? colorX.Green : colorX.White;
+            handler.Debug.Text(in debugAnchorLine, fistLine, 0.08f, in fistColor, 0f, true);
+            handler.Debug.Text(in debugAnchorLine2, pinchLine, 0.08f, in pinchColor, 0f, true);
             if (hand.Index.Tip.IsTracking && hand.Thumb.Tip.IsTracking)
             {
                 float3 indexMarker = wristWorld + wristRot * hand.Index.Tip.Position;
@@ -260,6 +266,9 @@ internal static class FistGesture
         }
     }
 
+    private static string FormatDegrees(float degrees) =>
+        float.IsNaN(degrees) ? "---" : $"{degrees:F0}";
+
     private static int ThumbTrackingCount(Hand hand)
     {
         int count = 0;
@@ -273,7 +282,7 @@ internal static class FistGesture
     private static void Release(InteractionHandler handler, ProximityGrabState state)
     {
         state.ProximityGrabActive = false;
-        state.Engaged = false;
+        state.FistEngaged = false;
         state.PinchEngaged = false;
         state.GestureHand = null;
         state.ActiveGesture = GrabGestureKind.None;

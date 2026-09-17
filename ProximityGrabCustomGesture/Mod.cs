@@ -13,7 +13,7 @@ public class ProximityGrabCustomGestureMod : ResoniteMod
     // initialize from Key.Value, and C# initializes static fields in textual order.
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> FistGrabEnabledKey =
-        new("FistGrabEnabled", "Fist gesture triggers proximity grab", () => false);
+        new("FistGrabEnabled", "Fist gesture triggers proximity grab", () => true);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> PrecisionGrabEnabledKey =

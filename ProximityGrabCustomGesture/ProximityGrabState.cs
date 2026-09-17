@@ -12,12 +12,12 @@ internal enum GrabGestureKind
 
 internal sealed class ProximityGrabState
 {
-    public bool ProximityGrabActive;
     public bool GestureDriven;
     public bool HasTrackingHands;
-    public bool Engaged;
-    public bool PinchEngaged;
+    public bool ProximityGrabActive;
     public GrabGestureKind ActiveGesture;
+    public bool FistEngaged;
+    public bool PinchEngaged;
     public Hand? GestureHand;
     public bool LastGrabResult;
 
