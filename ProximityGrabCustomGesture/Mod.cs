@@ -5,11 +5,14 @@ namespace ProximityGrabCustomGesture;
 
 public class ProximityGrabCustomGestureMod : ResoniteMod
 {
-    internal const string VERSION_CONSTANT = "0.3.1";
+    internal const string VERSION_CONSTANT = "0.3.3";
 
     // Gesture toggles
-    internal static bool FistGrabEnabled = true;
-    internal static bool PrecisionGrabEnabled = false;
+    internal static bool FistGrabEnabled = false;
+    internal static bool PrecisionGrabEnabled = true;
+
+    // Debug overlay (world-space text above each wrist)
+    internal static bool DebugShowPinch = true;
 
     // Fist gesture (average curl, degrees + per-finger minimum, degrees)
     internal static float FistEngageDegrees = 150f;

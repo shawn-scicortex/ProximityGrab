@@ -19,6 +19,7 @@ internal sealed class ProximityGrabState
     public bool PinchEngaged;
     public GrabGestureKind ActiveGesture;
     public Hand? GestureHand;
+    public bool LastGrabResult;
 
     private static readonly ConditionalWeakTable<InteractionHandler, ProximityGrabState> Table = new();
 

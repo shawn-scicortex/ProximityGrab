@@ -44,14 +44,9 @@ internal static class FistGesture
             handler.Input.InvalidateBindings();
         }
 
-        if (!ProximityGrabCustomGestureMod.FistGrabEnabled)
-            state.Engaged = false;
-        if (!ProximityGrabCustomGestureMod.PrecisionGrabEnabled)
-            state.PinchEngaged = false;
-
         Hand? ownHand = handler.Side.Value == Chirality.Left ? left : right;
-        bool fist = UpdateHand(ownHand, ref state.Engaged);
-        bool pinch = UpdatePinch(handler, ownHand, ref state.PinchEngaged, fist);
+        bool fist = ProximityGrabCustomGestureMod.FistGrabEnabled && UpdateHand(ownHand, ref state.Engaged);
+        bool pinch = ProximityGrabCustomGestureMod.PrecisionGrabEnabled && UpdatePinch(handler, ownHand, ref state.PinchEngaged, fist);
 
         if (!state.HasTrackingHands)
         {
@@ -62,6 +57,8 @@ internal static class FistGesture
         GrabGestureKind gesture = fist
             ? GrabGestureKind.Fist
             : pinch ? GrabGestureKind.Pinch : GrabGestureKind.None;
+
+        DrawDebug(handler, ownHand, state);
 
         if (state.ProximityGrabActive && gesture == GrabGestureKind.None)
         {
@@ -207,6 +204,44 @@ internal static class FistGesture
             previous = current;
         }
         return sum;
+    }
+
+    private static void DrawDebug(InteractionHandler handler, Hand? hand, ProximityGrabState state)
+    {
+        try
+        {
+            if (!ProximityGrabCustomGestureMod.DebugShowPinch || hand == null)
+                return;
+            var root = handler.LocalUserRoot;
+            if (root == null)
+                return;
+            float distance = float.NaN;
+            if (hand.Index.Tip.IsTracking && hand.Thumb.Tip.IsTracking)
+            {
+                float3 indexTip = root.Slot.LocalPointToGlobal(hand.Index.Tip.Position);
+                float3 thumbTip = root.Slot.LocalPointToGlobal(hand.Thumb.Tip.Position);
+                distance = (indexTip - thumbTip).Magnitude / root.GlobalScale;
+            }
+            string side = handler.Side.Value == Chirality.Left ? "L" : "R";
+            string line = $"{side} d:{distance:F3} idx:{CurlDegrees(hand.Index):F0}/{ProximityGrabCustomGestureMod.PinchMaxIndexCurlDegrees:0} th:{ThumbTrackingCount(hand)} gr:{state.LastGrabResult} eng:{(state.PinchEngaged ? "Y" : "N")}";
+            float3 anchor = root.Slot.LocalPointToGlobal(hand.Wrist.Position) + root.Slot.Up * (0.12f * root.GlobalScale);
+            var color = state.PinchEngaged ? colorX.Green : colorX.White;
+            handler.Debug.Text(in anchor, line, 0.08f, in color, 0f, true);
+        }
+        catch (Exception e)
+        {
+            UniLog.Error("ProximityGrab debug overlay failed: " + e);
+        }
+    }
+
+    private static int ThumbTrackingCount(Hand hand)
+    {
+        int count = 0;
+        if (hand.Thumb.Metacarpal.IsTracking) count++;
+        if (hand.Thumb.Proximal.IsTracking) count++;
+        if (hand.Thumb.Distal.IsTracking) count++;
+        if (hand.Thumb.Tip.IsTracking) count++;
+        return count;
     }
 
     private static void Release(InteractionHandler handler, ProximityGrabState state)
