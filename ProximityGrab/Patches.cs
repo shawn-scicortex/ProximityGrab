@@ -6,7 +6,7 @@ using Elements.Core;
 using FrooxEngine;
 using HarmonyLib;
 
-namespace ProximityGrabCustomGesture;
+namespace ProximityGrab;
 
 internal static class Methods
 {
@@ -42,7 +42,7 @@ internal static class Patch_InteractionHandler_OnCommonUpdate
         }
         catch (System.Exception e)
         {
-            UniLog.Error($"ProximityGrabCustomGesture: failed to update gesture for {__instance}: {e}");
+            UniLog.Error($"ProximityGrab: failed to update gesture for {__instance}: {e}");
         }
     }
 }
@@ -71,15 +71,15 @@ internal static class Patch_InteractionHandler_Grab
         }
         catch (System.Exception e)
         {
-            UniLog.Error($"ProximityGrabCustomGesture: gesture grab failed: {e}");
+            UniLog.Error($"ProximityGrab: gesture grab failed: {e}");
             __result = false;
         }
         state.LastGrabResult = (bool)__result;
         if (!state.LastGrabResult
             && state.ActiveGesture == GrabGestureKind.Pinch
-            && ProximityGrabCustomGestureMod.DebugShowPinch)
+            && ProximityGrabMod.DebugShowPinch)
         {
-            UniLog.Log($"ProximityGrabCustomGesture: pinch grab failed: {PrecisionGrab.LastAttemptDetail}");
+            UniLog.Log($"ProximityGrab: pinch grab failed: {PrecisionGrab.LastAttemptDetail}");
         }
         return false;
     }
@@ -99,7 +99,7 @@ internal static class Patch_InputInterface_Bind
     {
         try
         {
-            if (!ProximityGrabCustomGestureMod.GestureMode)
+            if (!ProximityGrabMod.GestureMode)
                 return;
             if (!FistGesture.HasTrackingHands)
                 return;
@@ -111,7 +111,7 @@ internal static class Patch_InputInterface_Bind
         }
         catch (System.Exception e)
         {
-            UniLog.Error($"ProximityGrabCustomGesture: failed to strip grab bindings: {e}");
+            UniLog.Error($"ProximityGrab: failed to strip grab bindings: {e}");
         }
     }
 
@@ -156,14 +156,14 @@ internal static class MenuPatches
             }
             catch (System.Exception e)
             {
-                UniLog.Error($"ProximityGrabCustomGesture: could not resolve Grabbing menu option: {e}");
+                UniLog.Error($"ProximityGrab: could not resolve Grabbing menu option: {e}");
             }
         }
         var openMenu = MenuOptionsType == null ? null : AccessTools.Method(typeof(InteractionHandler), "OpenContextMenu", new[] { MenuOptionsType, typeof(float?) });
         var positionMenu = AccessTools.Method(typeof(InteractionHandler), "PositionContextMenu", new[] { typeof(ContextMenu) });
         if (openMenu == null || positionMenu == null || GrabbingOption < 0)
         {
-            UniLog.Error("ProximityGrabCustomGesture: could not find context menu methods; gesture menu toggle disabled.");
+            UniLog.Error("ProximityGrab: could not find context menu methods; gesture menu toggle disabled.");
             return;
         }
         harmony.Patch(openMenu, prefix: new HarmonyMethod(AccessTools.Method(typeof(MenuPatches), nameof(OpenContextMenuPrefix))));
@@ -192,7 +192,7 @@ internal static class MenuPatches
         }
         catch (System.Exception e)
         {
-            UniLog.Error($"ProximityGrabCustomGesture: failed to add gesture menu toggle: {e}");
+            UniLog.Error($"ProximityGrab: failed to add gesture menu toggle: {e}");
         }
     }
 
@@ -205,7 +205,7 @@ internal static class MenuPatches
         {
             Slot slot = h.Slot.FindChild("ProximityGestureMode") ?? h.Slot.AddSlot("ProximityGestureMode", persistent: false);
             ValueField<bool> field = slot.GetComponent<ValueField<bool>>() ?? slot.AttachComponent<ValueField<bool>>();
-            field.Value.Value = ProximityGrabCustomGestureMod.GestureMode;
+            field.Value.Value = ProximityGrabMod.GestureMode;
             field.Value.Changed += OnGestureFieldChanged;
             return field;
         });
@@ -222,20 +222,20 @@ internal static class MenuPatches
                 value = field.Value.Value;
             else
                 return;
-            if (value == ProximityGrabCustomGestureMod.GestureModeKey.Value)
+            if (value == ProximityGrabMod.GestureModeKey.Value)
                 return;
             // Write through ModConfiguration so OnThisConfigurationChanged fires.
             // A direct key.Value write bypasses it, leaving the mirrored static stale
             // (and Update would stomp the field back on the next frame).
-            if (ProximityGrabCustomGestureMod.Config != null)
-                ProximityGrabCustomGestureMod.Config.Set(ProximityGrabCustomGestureMod.GestureModeKey, value);
+            if (ProximityGrabMod.Config != null)
+                ProximityGrabMod.Config.Set(ProximityGrabMod.GestureModeKey, value);
             else
-                ProximityGrabCustomGestureMod.GestureModeKey.Value = value;
-            ProximityGrabCustomGestureMod.CopyFromConfig();
+                ProximityGrabMod.GestureModeKey.Value = value;
+            ProximityGrabMod.CopyFromConfig();
         }
         catch (System.Exception e)
         {
-            UniLog.Error($"ProximityGrabCustomGesture: failed to mirror gesture mode change: {e}");
+            UniLog.Error($"ProximityGrab: failed to mirror gesture mode change: {e}");
         }
     }
 }

@@ -4,7 +4,7 @@ using Elements.Core;
 using FrooxEngine;
 using Renderite.Shared;
 
-namespace ProximityGrabCustomGesture;
+namespace ProximityGrab;
 
 internal static class FistGesture
 {
@@ -51,14 +51,14 @@ internal static class FistGesture
         // edits appear within a frame, and rebuild bindings on mode transitions so
         // the controller grip bindings follow immediately from any source.
         ValueField<bool> gestureField = MenuPatches.GetGestureField(handler);
-        if (gestureField.Value.Value != ProximityGrabCustomGestureMod.GestureMode)
-            gestureField.Value.Value = ProximityGrabCustomGestureMod.GestureMode;
-        if (ProximityGrabCustomGestureMod.GestureMode != LastGestureMode)
+        if (gestureField.Value.Value != ProximityGrabMod.GestureMode)
+            gestureField.Value.Value = ProximityGrabMod.GestureMode;
+        if (ProximityGrabMod.GestureMode != LastGestureMode)
         {
-            LastGestureMode = ProximityGrabCustomGestureMod.GestureMode;
+            LastGestureMode = ProximityGrabMod.GestureMode;
             handler.Input.InvalidateBindings();
         }
-        if (!ProximityGrabCustomGestureMod.GestureMode)
+        if (!ProximityGrabMod.GestureMode)
         {
             // Gesture mode off: fully-stock behavior. Clear hysteresis memories so
             // re-enabling starts clean; any in-flight gesture grab ends via Release below.
@@ -66,10 +66,10 @@ internal static class FistGesture
             state.PinchEngaged = false;
             state.GestureDriven = false;
         }
-        bool fistRaw = ProximityGrabCustomGestureMod.GestureMode && UpdateFist(ownHand, ref state.FistEngaged);
-        bool pinchRaw = ProximityGrabCustomGestureMod.GestureMode && UpdatePinch(handler, ownHand, ref state.PinchEngaged);
-        bool fist = ProximityGrabCustomGestureMod.FistGrabEnabled && fistRaw;
-        bool pinch = ProximityGrabCustomGestureMod.PrecisionGrabEnabled && pinchRaw && !fist;
+        bool fistRaw = ProximityGrabMod.GestureMode && UpdateFist(ownHand, ref state.FistEngaged);
+        bool pinchRaw = ProximityGrabMod.GestureMode && UpdatePinch(handler, ownHand, ref state.PinchEngaged);
+        bool fist = ProximityGrabMod.FistGrabEnabled && fistRaw;
+        bool pinch = ProximityGrabMod.PrecisionGrabEnabled && pinchRaw && !fist;
 
         if (!state.HasTrackingHands)
         {
@@ -116,12 +116,12 @@ internal static class FistGesture
         float min = MinCurlDegrees(hand!);
         float minJoint = MinJointCurlDegrees(hand!);
         bool engaged = prevEngaged
-            ? avg > ProximityGrabCustomGestureMod.FistReleaseDegrees
-              && min > ProximityGrabCustomGestureMod.FistMinReleaseDegrees
-              && minJoint > ProximityGrabCustomGestureMod.FistMinJointReleaseDegrees
-            : avg > ProximityGrabCustomGestureMod.FistEngageDegrees
-              && min > ProximityGrabCustomGestureMod.FistMinEngageDegrees
-              && minJoint > ProximityGrabCustomGestureMod.FistMinJointEngageDegrees;
+            ? avg > ProximityGrabMod.FistReleaseDegrees
+              && min > ProximityGrabMod.FistMinReleaseDegrees
+              && minJoint > ProximityGrabMod.FistMinJointReleaseDegrees
+            : avg > ProximityGrabMod.FistEngageDegrees
+              && min > ProximityGrabMod.FistMinEngageDegrees
+              && minJoint > ProximityGrabMod.FistMinJointEngageDegrees;
         prevEngaged = engaged;
         return engaged;
     }
@@ -139,7 +139,7 @@ internal static class FistGesture
             prevEngaged = false;
             return false;
         }
-        if (CurlDegrees(hand!.Index) >= ProximityGrabCustomGestureMod.PinchMaxIndexCurlDegrees)
+        if (CurlDegrees(hand!.Index) >= ProximityGrabMod.PinchMaxIndexCurlDegrees)
         {
             prevEngaged = false;
             return false;
@@ -148,8 +148,8 @@ internal static class FistGesture
         float3 thumbTip = root.Slot.LocalPointToGlobal(hand!.Thumb.Tip.Position);
         float distance = (indexTip - thumbTip).Magnitude / root.GlobalScale;
         bool engaged = prevEngaged
-            ? distance < ProximityGrabCustomGestureMod.PinchReleaseDistance
-            : distance < ProximityGrabCustomGestureMod.PinchEngageDistance;
+            ? distance < ProximityGrabMod.PinchReleaseDistance
+            : distance < ProximityGrabMod.PinchEngageDistance;
         prevEngaged = engaged;
         return engaged;
     }
@@ -276,7 +276,7 @@ internal static class FistGesture
     {
         try
         {
-            if (!ProximityGrabCustomGestureMod.DebugShowPinch || !ProximityGrabCustomGestureMod.GestureMode || hand == null)
+            if (!ProximityGrabMod.DebugShowPinch || !ProximityGrabMod.GestureMode || hand == null)
                 return;
             var root = handler.LocalUserRoot;
             if (root == null)
@@ -296,10 +296,10 @@ internal static class FistGesture
             float fistMin = MinCurlDegrees(hand);
             float fistMinJoint = MinJointCurlDegrees(hand);
             float fistThreshold = state.FistEngaged
-                ? ProximityGrabCustomGestureMod.FistReleaseDegrees
-                : ProximityGrabCustomGestureMod.FistEngageDegrees;
+                ? ProximityGrabMod.FistReleaseDegrees
+                : ProximityGrabMod.FistEngageDegrees;
             string fistLine = $"{side} Fist avg:{FormatDegrees(fistAvg)}/{fistThreshold:0} min:{FormatDegrees(fistMin)} jm:{FormatDegrees(fistMinJoint)} eng:{(state.FistEngaged ? "Y" : "N")}";
-            string pinchLine = $"{side} Pinch d:{distance:F3} idx:{CurlDegrees(hand.Index):F0}/{ProximityGrabCustomGestureMod.PinchMaxIndexCurlDegrees:0} th:{ThumbTrackingCount(hand)} eng:{(state.PinchEngaged ? "Y" : "N")}";
+            string pinchLine = $"{side} Pinch d:{distance:F3} idx:{CurlDegrees(hand.Index):F0}/{ProximityGrabMod.PinchMaxIndexCurlDegrees:0} th:{ThumbTrackingCount(hand)} eng:{(state.PinchEngaged ? "Y" : "N")}";
             Span<float> indexJoints = stackalloc float[3];
             int indexTracked = JointCurlDegrees(hand.Index, indexJoints);
             string indexLine = $"{side} Idx j:{FormatJoint(indexJoints, indexTracked, 0)}/{FormatJoint(indexJoints, indexTracked, 1)}/{FormatJoint(indexJoints, indexTracked, 2)} tot:{FormatDegrees(CurlDegrees(hand.Index))} n:{indexTracked}";
@@ -331,7 +331,7 @@ internal static class FistGesture
                 handler.Debug.Text(in thumbMarker, "T", size, in cThumb, 0f, true);
                 handler.Debug.Text(in originMarker, "O", size, in cOrigin, 0f, true);
                 handler.Debug.Text(in wristMarker, "W", size, in cWrist, 0f, true);
-                handler.Debug.Sphere(in originMarker, ProximityGrabCustomGestureMod.PrecisionMaxRadius, in cSphere);
+                handler.Debug.Sphere(in originMarker, ProximityGrabMod.PrecisionMaxRadius, in cSphere);
             }
             // Fist grab sphere: mirrors the engine non-laser overlap test
             // (InteractionHandler GRAB_RADIUS at Grabber slot, scaled by user root).

@@ -6,7 +6,7 @@ using Elements.Core;
 using FrooxEngine;
 using HarmonyLib;
 
-namespace ProximityGrabCustomGesture;
+namespace ProximityGrab;
 
 internal static class PrecisionGrab
 {
@@ -43,7 +43,7 @@ internal static class PrecisionGrab
 
         void LogDiag()
         {
-            UniLog.Log("ProximityGrabCustomGesture: frame diag " + BuildFrameDiag(handler, hand, root, frame, indexTip, thumbTip, origin));
+            UniLog.Log("ProximityGrab: frame diag " + BuildFrameDiag(handler, hand, root, frame, indexTip, thumbTip, origin));
         }
 
         if (!_frameDiagLogged)
@@ -55,9 +55,9 @@ internal static class PrecisionGrab
         List<ICollider> colliders = Pool.BorrowList<ICollider>();
         try
         {
-            for (float radius = ProximityGrabCustomGestureMod.PrecisionMinRadius;
-                 radius < ProximityGrabCustomGestureMod.PrecisionMaxRadius;
-                 radius += ProximityGrabCustomGestureMod.PrecisionRadiusStep)
+            for (float radius = ProximityGrabMod.PrecisionMinRadius;
+                 radius < ProximityGrabMod.PrecisionMaxRadius;
+                 radius += ProximityGrabMod.PrecisionRadiusStep)
             {
                 handler.World.Physics.SphereOverlap(in origin, scale * radius, colliders);
             }
@@ -190,7 +190,7 @@ internal static class PrecisionGrab
         }
         catch (Exception e)
         {
-            UniLog.Warning($"ProximityGrabCustomGesture: failed to tint precision grab material: {e}");
+            UniLog.Warning($"ProximityGrab: failed to tint precision grab material: {e}");
         }
     }
 }

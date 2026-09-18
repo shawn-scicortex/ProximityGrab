@@ -1,13 +1,13 @@
 using HarmonyLib;
 using ResoniteModLoader;
 
-namespace ProximityGrabCustomGesture;
+namespace ProximityGrab;
 
-public class ProximityGrabCustomGestureMod : ResoniteMod
+public class ProximityGrabMod : ResoniteMod
 {
     internal const string VERSION_CONSTANT = "0.9.0";
 
-    // RML configuration keys (persisted to rml_config/ProximityGrabCustomGesture.json,
+    // RML configuration keys (persisted to rml_config/ProximityGrab.json,
     // editable via config-manager UIs or by editing the JSON while the game is stopped).
     // NOTE: keys must stay declared before the mirrored statics below: the statics
     // initialize from Key.Value, and C# initializes static fields in textual order.
@@ -106,14 +106,14 @@ public class ProximityGrabCustomGestureMod : ResoniteMod
     internal static float PrecisionMaxRadius = PrecisionMaxRadiusKey.Value;
     internal static float PrecisionRadiusStep = PrecisionRadiusStepKey.Value;
 
-    public override string Name => "ProximityGrabCustomGesture";
+    public override string Name => "ProximityGrab";
     public override string Author => "YourName";
     public override string Version => VERSION_CONSTANT;
-    public override string Link => "https://github.com/<tbd>/ProximityGrabCustomGesture/";
+    public override string Link => "https://github.com/<tbd>/ProximityGrab/";
 
     public override void OnEngineInit()
     {
-        Msg("ProximityGrabCustomGesture loading...");
+        Msg("ProximityGrab loading...");
         Config = GetConfiguration();
         if (Config == null)
         {
@@ -124,11 +124,11 @@ public class ProximityGrabCustomGestureMod : ResoniteMod
             CopyFromConfig();
             Config.OnThisConfigurationChanged += _ => CopyFromConfig();
         }
-        var harmony = new Harmony("YourName.ProximityGrabCustomGesture");
+        var harmony = new Harmony("YourName.ProximityGrab");
         Methods.HarmonyInstance = harmony;
         harmony.PatchAll();
         MenuPatches.Apply(harmony);
-        Msg("ProximityGrabCustomGesture loaded. Fist = proximity grab, pinch = precision grab (fist wins) while hands are tracked.");
+        Msg("ProximityGrab loaded. Fist = proximity grab, pinch = precision grab (fist wins) while hands are tracked.");
     }
 
     private static bool IsNonNegativeFinite(float value) =>

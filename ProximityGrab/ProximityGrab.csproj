@@ -6,15 +6,16 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <CopyToMods Condition="'$(CopyToMods)'==''">false</CopyToMods>
-    <Version>0.3.0</Version>
-    <Product>ProximityGrabCustomGesture</Product>
-    <RootNamespace>ProximityGrabCustomGesture</RootNamespace>
+    <Version>0.9.0</Version>
+    <Product>ProximityGrab</Product>
+    <RootNamespace>ProximityGrab</RootNamespace>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(ResonitePath)'==''">
     <ResonitePath>$(MSBuildThisFileDirectory)Resonite/</ResonitePath>
     <ResonitePath Condition="Exists('C:\Program Files (x86)\Steam\steamapps\common\Resonite\')">C:\Program Files (x86)\Steam\steamapps\common\Resonite\</ResonitePath>
     <ResonitePath Condition="Exists('$(HOME)/.steam/steam/steamapps/common/Resonite/')">$(HOME)/.steam/steam/steamapps/common/Resonite/</ResonitePath>
+    <ResonitePath Condition="Exists('$(USERPROFILE)\src\delphium_grab\')">$(USERPROFILE)\src\delphium_grab\</ResonitePath>
   </PropertyGroup>
 
   <Target Name="DebugResonitePath" BeforeTargets="Build">
@@ -50,7 +51,7 @@
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(CopyToMods)'=='true'">
-    <Message Text="Copying ProximityGrabCustomGesture.dll to $(ResonitePath)rml_mods" Importance="high" />
+    <Message Text="Copying ProximityGrab.dll to $(ResonitePath)rml_mods" Importance="high" />
     <Copy SourceFiles="$(TargetDir)$(TargetFileName)" DestinationFolder="$(ResonitePath)rml_mods" ContinueOnError="true" />
   </Target>
 </Project>

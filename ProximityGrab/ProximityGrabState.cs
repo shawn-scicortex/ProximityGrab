@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using FrooxEngine;
 
-namespace ProximityGrabCustomGesture;
+namespace ProximityGrab;
 
 internal enum GrabGestureKind
 {
