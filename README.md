@@ -16,9 +16,9 @@ Uninstalling the mod restores stock grab behavior completely.
 
 ### Configuration
 
-The config variables are currently hardcoded into `Mod.cs`. Edit and rebuild to change.
+The config variables are registered with RML and can be interactively changed using a config mod like [RosoniteModSettings](https://github.com/badhaloninja/ResoniteModSettings).
 
-TODO: add GUI-based configuration in the Resonite dashboard.
+Additionally the mod can be turned on/off from the Grabbing context menu. This is useful if you switch to or from controllers in the game.
 
 ### Behavior matrix
 

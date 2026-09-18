@@ -12,68 +12,68 @@ public class ProximityGrabCustomGestureMod : ResoniteMod
     // NOTE: keys must stay declared before the mirrored statics below: the statics
     // initialize from Key.Value, and C# initializes static fields in textual order.
     [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<bool> GestureModeKey =
+        new("GestureMode", "Proximity Grabs Enabled", () => true);
+
+    [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> FistGrabEnabledKey =
-        new("FistGrabEnabled", "Fist gesture triggers proximity grab", () => true);
+        new("FistGrabEnabled", "Fist gesture enabled", () => true);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> PrecisionGrabEnabledKey =
-        new("PrecisionGrabEnabled", "Index-thumb pinch triggers precision grab", () => true);
+        new("PrecisionGrabEnabled", "Index-thumb pinch grab enabled ", () => true);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> DebugShowPinchKey =
-        new("DebugShowPinch", "World-space debug text above each wrist", () => true);
-
-    [AutoRegisterConfigKey]
-    internal static readonly ModConfigurationKey<bool> GestureModeKey =
-        new("GestureMode", "Drive grabs from fist/pinch gestures (HandGrab menu toggle)", () => true);
+        new("DebugShowPinch", "Show grip debug visuals", () => true);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> FistEngageDegreesKey =
-        new("FistEngageDegrees", "Average finger curl to engage fist grab (degrees)", () => 150f, valueValidator: IsNonNegativeFinite);
+        new("FistEngageDegrees", "Avg finger curl degrees to engage fist grab", () => 150f, valueValidator: IsNonNegativeFinite);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> FistReleaseDegreesKey =
-        new("FistReleaseDegrees", "Average finger curl to release fist grab (degrees)", () => 100f, valueValidator: IsNonNegativeFinite);
+        new("FistReleaseDegrees", "Avg finger curl degrees to release fist grab", () => 100f, valueValidator: IsNonNegativeFinite);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> FistMinEngageDegreesKey =
-        new("FistMinEngageDegrees", "Per-finger minimum curl to engage fist grab (degrees)", () => 90f, valueValidator: IsNonNegativeFinite);
+        new("FistMinEngageDegrees", "Finger min curl degrees to engage fist grab", () => 90f, valueValidator: IsNonNegativeFinite);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> FistMinReleaseDegreesKey =
-        new("FistMinReleaseDegrees", "Per-finger minimum curl to hold fist grab (degrees)", () => 70f, valueValidator: IsNonNegativeFinite);
+        new("FistMinReleaseDegrees", "Finger min curl degrees to release fist grab", () => 70f, valueValidator: IsNonNegativeFinite);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> FistMinJointEngageDegreesKey =
-        new("FistMinJointEngageDegrees", "Per-joint minimum curl to engage fist grab (degrees)", () => 30f, valueValidator: IsNonNegativeFinite);
+        new("FistMinJointEngageDegrees", "Joint min angle to engage fist grab", () => 30f, valueValidator: IsNonNegativeFinite);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> FistMinJointReleaseDegreesKey =
-        new("FistMinJointReleaseDegrees", "Per-joint minimum curl to hold fist grab (degrees)", () => 20f, valueValidator: IsNonNegativeFinite);
+        new("FistMinJointReleaseDegrees", "Joint min angle to release fist grab", () => 20f, valueValidator: IsNonNegativeFinite);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> PinchEngageDistanceKey =
-        new("PinchEngageDistance", "Index-thumb tip distance to engage pinch (m)", () => 0.030f, valueValidator: IsNonNegativeFinite);
+        new("PinchEngageDistance", "Index-thumb tip distance to engage pinch", () => 0.030f, valueValidator: IsNonNegativeFinite);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> PinchReleaseDistanceKey =
-        new("PinchReleaseDistance", "Index-thumb tip distance to release pinch (m)", () => 0.050f, valueValidator: IsNonNegativeFinite);
+        new("PinchReleaseDistance", "Index-thumb tip distance to release pinch", () => 0.050f, valueValidator: IsNonNegativeFinite);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> PinchMaxIndexCurlDegreesKey =
-        new("PinchMaxIndexCurlDegrees", "Index curl above which pinch is rejected (degrees)", () => 140f, valueValidator: IsNonNegativeFinite);
+        new("PinchMaxIndexCurlDegrees", "Index curl angle above which pinch is rejected", () => 140f, valueValidator: IsNonNegativeFinite);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> PrecisionMinRadiusKey =
-        new("PrecisionMinRadius", "Precision grab sphere sweep start radius (m)", () => 0.004f, valueValidator: IsNonNegativeFinite);
+        new("PrecisionMinRadius", "Pinch grab sphere sweep min radius", () => 0.004f, valueValidator: IsNonNegativeFinite);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> PrecisionMaxRadiusKey =
-        new("PrecisionMaxRadius", "Precision grab sphere sweep max radius (m)", () => 0.04f, valueValidator: IsNonNegativeFinite);
+        new("PrecisionMaxRadius", "Pinch grab sphere sweep max radius", () => 0.04f, valueValidator: IsNonNegativeFinite);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> PrecisionRadiusStepKey =
-        new("PrecisionRadiusStep", "Precision grab sphere sweep radius step (m)", () => 0.01f, valueValidator: IsNonNegativeFinite);
+        new("PrecisionRadiusStep", "Pinch grab sphere sweep radius step", () => 0.01f, valueValidator: IsNonNegativeFinite);
 
     internal static ModConfiguration? Config;
 
