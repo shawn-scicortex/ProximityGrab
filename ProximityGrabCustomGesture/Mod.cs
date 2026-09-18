@@ -5,7 +5,7 @@ namespace ProximityGrabCustomGesture;
 
 public class ProximityGrabCustomGestureMod : ResoniteMod
 {
-    internal const string VERSION_CONSTANT = "0.6.0";
+    internal const string VERSION_CONSTANT = "0.9.0";
 
     // RML configuration keys (persisted to rml_config/ProximityGrabCustomGesture.json,
     // editable via config-manager UIs or by editing the JSON while the game is stopped).
@@ -22,6 +22,10 @@ public class ProximityGrabCustomGestureMod : ResoniteMod
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> DebugShowPinchKey =
         new("DebugShowPinch", "World-space debug text above each wrist", () => true);
+
+    [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<bool> GestureModeKey =
+        new("GestureMode", "Drive grabs from fist/pinch gestures (HandGrab menu toggle)", () => true);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> FistEngageDegreesKey =
@@ -81,6 +85,9 @@ public class ProximityGrabCustomGestureMod : ResoniteMod
     // Debug overlay (world-space text above each wrist)
     internal static bool DebugShowPinch = DebugShowPinchKey.Value;
 
+    // Gesture mode (global on/off for both hands, toggled from the HandGrab menu)
+    internal static bool GestureMode = GestureModeKey.Value;
+
     // Fist gesture (average curl, degrees + per-finger minimum, degrees)
     internal static float FistEngageDegrees = FistEngageDegreesKey.Value;
     internal static float FistReleaseDegrees = FistReleaseDegreesKey.Value;
@@ -120,17 +127,19 @@ public class ProximityGrabCustomGestureMod : ResoniteMod
         var harmony = new Harmony("YourName.ProximityGrabCustomGesture");
         Methods.HarmonyInstance = harmony;
         harmony.PatchAll();
+        MenuPatches.Apply(harmony);
         Msg("ProximityGrabCustomGesture loaded. Fist = proximity grab, pinch = precision grab (fist wins) while hands are tracked.");
     }
 
     private static bool IsNonNegativeFinite(float value) =>
         float.IsFinite(value) && value >= 0f;
 
-    private static void CopyFromConfig()
+    internal static void CopyFromConfig()
     {
         FistGrabEnabled = FistGrabEnabledKey.Value;
         PrecisionGrabEnabled = PrecisionGrabEnabledKey.Value;
         DebugShowPinch = DebugShowPinchKey.Value;
+        GestureMode = GestureModeKey.Value;
         FistEngageDegrees = FistEngageDegreesKey.Value;
         FistReleaseDegrees = FistReleaseDegreesKey.Value;
         FistMinEngageDegrees = FistMinEngageDegreesKey.Value;

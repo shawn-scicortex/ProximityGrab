@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Elements.Core;
 using FrooxEngine;
 using HarmonyLib;
@@ -84,8 +85,10 @@ internal static class Patch_InteractionHandler_Grab
     }
 }
 
-// While hands are tracked, unbind only VR-controller grab sources so the grab command can never fire
-// from a controller/skeleton false positive; gamepad and keyboard/mouse grab bindings are kept.
+// While hands are tracked and gesture mode is on, unbind only VR-controller grab
+// sources so the grab command can never fire from a controller/skeleton false
+// positive; gamepad and keyboard/mouse grab bindings are kept. With gesture mode
+// off the stock controller grip bindings are left intact (fully-stock behavior).
 [HarmonyPatch(typeof(InputInterface))]
 [HarmonyPatch("Bind")]
 [HarmonyPatch(new System.Type[] { typeof(InputGroup) })]
@@ -96,6 +99,8 @@ internal static class Patch_InputInterface_Bind
     {
         try
         {
+            if (!ProximityGrabCustomGestureMod.GestureMode)
+                return;
             if (!FistGesture.HasTrackingHands)
                 return;
             if (group is not InteractionHandlerInputs handlerInputs)
@@ -116,5 +121,121 @@ internal static class Patch_InputInterface_Bind
         if (bindingsField?.GetValue(grab) is not List<InputBinding<bool>> bindings)
             return;
         bindings.RemoveAll(b => b.ImplicitDevice is ControllerBase);
+    }
+}
+
+// "Proximity Gesture Grab" toggle in the hand's Grabbing context submenu.
+// The engine menu items are built inside an async continuation, so instead of
+// patching the builder we record the requested submenu (sync prefix on
+// OpenContextMenu) and append our item once the menu is populated (sync prefix
+// on PositionContextMenu, which runs after the items are added).
+// The item is a live AddToggleItem bound to a per-hand ValueField<bool> that
+// mirrors the RML GestureMode key, so it flips in place exactly like StickyGrab.
+internal static class MenuPatches
+{
+    private static Type? MenuOptionsType;
+    private static int GrabbingOption = -1;
+
+    private sealed class MenuOptionsHolder
+    {
+        public int Value = -1;
+    }
+
+    private static readonly ConditionalWeakTable<InteractionHandler, MenuOptionsHolder> LastMenuOptions = new();
+
+    private static readonly ConditionalWeakTable<InteractionHandler, ValueField<bool>> GestureFields = new();
+
+    internal static void Apply(Harmony harmony)
+    {
+        MenuOptionsType = AccessTools.Inner(typeof(InteractionHandler), "MenuOptions");
+        if (MenuOptionsType != null)
+        {
+            try
+            {
+                GrabbingOption = (int)Enum.Parse(MenuOptionsType, "Grabbing");
+            }
+            catch (System.Exception e)
+            {
+                UniLog.Error($"ProximityGrabCustomGesture: could not resolve Grabbing menu option: {e}");
+            }
+        }
+        var openMenu = MenuOptionsType == null ? null : AccessTools.Method(typeof(InteractionHandler), "OpenContextMenu", new[] { MenuOptionsType, typeof(float?) });
+        var positionMenu = AccessTools.Method(typeof(InteractionHandler), "PositionContextMenu", new[] { typeof(ContextMenu) });
+        if (openMenu == null || positionMenu == null || GrabbingOption < 0)
+        {
+            UniLog.Error("ProximityGrabCustomGesture: could not find context menu methods; gesture menu toggle disabled.");
+            return;
+        }
+        harmony.Patch(openMenu, prefix: new HarmonyMethod(AccessTools.Method(typeof(MenuPatches), nameof(OpenContextMenuPrefix))));
+        harmony.Patch(positionMenu, prefix: new HarmonyMethod(AccessTools.Method(typeof(MenuPatches), nameof(PositionContextMenuPrefix))));
+    }
+
+    private static void OpenContextMenuPrefix(InteractionHandler __instance, object options)
+    {
+        if (MenuOptionsType == null || options == null || !MenuOptionsType.IsInstanceOfType(options))
+            return;
+        LastMenuOptions.GetValue(__instance, _ => new MenuOptionsHolder()).Value = (int)options;
+    }
+
+    private static void PositionContextMenuPrefix(InteractionHandler __instance, ContextMenu menu)
+    {
+        try
+        {
+            if (!__instance.IsOwnedByLocalUser || menu == null)
+                return;
+            if (!LastMenuOptions.TryGetValue(__instance, out MenuOptionsHolder? holder) || holder.Value != GrabbingOption)
+                return;
+            ValueField<bool> field = GetGestureField(__instance);
+            var onColor = colorX.Orange;
+            var offColor = colorX.Blue;
+            menu.AddToggleItem(field.Value, (LocaleString)"Proximity Grab On", (LocaleString)"Proximity Grab Off", in onColor, in offColor);
+        }
+        catch (System.Exception e)
+        {
+            UniLog.Error($"ProximityGrabCustomGesture: failed to add gesture menu toggle: {e}");
+        }
+    }
+
+    // Per-hand live mirror of the RML GestureMode key. Created once per handler;
+    // menu taps write through to RML via OnGestureFieldChanged, and FistGesture.Update
+    // mirrors RML back so config-UI edits appear within a frame.
+    internal static ValueField<bool> GetGestureField(InteractionHandler handler)
+    {
+        return GestureFields.GetValue(handler, static h =>
+        {
+            Slot slot = h.Slot.FindChild("ProximityGestureMode") ?? h.Slot.AddSlot("ProximityGestureMode", persistent: false);
+            ValueField<bool> field = slot.GetComponent<ValueField<bool>>() ?? slot.AttachComponent<ValueField<bool>>();
+            field.Value.Value = ProximityGrabCustomGestureMod.GestureMode;
+            field.Value.Changed += OnGestureFieldChanged;
+            return field;
+        });
+    }
+
+    private static void OnGestureFieldChanged(IChangeable changed)
+    {
+        try
+        {
+            bool value;
+            if (changed is Sync<bool> sync)
+                value = sync.Value;
+            else if (changed is ValueField<bool> field)
+                value = field.Value.Value;
+            else
+                return;
+            if (value == ProximityGrabCustomGestureMod.GestureModeKey.Value)
+                return;
+            // Write through ModConfiguration so OnThisConfigurationChanged fires.
+            // A direct key.Value write bypasses it, leaving the mirrored static stale
+            // (and Update would stomp the field back on the next frame).
+            if (ProximityGrabCustomGestureMod.Config != null)
+                ProximityGrabCustomGestureMod.Config.Set(ProximityGrabCustomGestureMod.GestureModeKey, value);
+            else
+                ProximityGrabCustomGestureMod.GestureModeKey.Value = value;
+            ProximityGrabCustomGestureMod.CopyFromConfig();
+        }
+        catch (System.Exception e)
+        {
+            UniLog.Error($"ProximityGrabCustomGesture: failed to mirror gesture mode change: {e}");
+        }
     }
 }

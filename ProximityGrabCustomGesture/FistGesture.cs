@@ -10,6 +10,8 @@ internal static class FistGesture
 {
     private static readonly List<Hand> Devices = new();
 
+    private static bool LastGestureMode = true;
+
     public static bool HasTrackingHands { get; private set; }
 
     public static void Update(InteractionHandler handler)
@@ -45,8 +47,27 @@ internal static class FistGesture
         }
 
         Hand? ownHand = handler.Side.Value == Chirality.Left ? left : right;
-        bool fistRaw = UpdateFist(ownHand, ref state.FistEngaged);
-        bool pinchRaw = UpdatePinch(handler, ownHand, ref state.PinchEngaged);
+        // Mirror the RML GestureMode key into this hand's menu field so config-UI
+        // edits appear within a frame, and rebuild bindings on mode transitions so
+        // the controller grip bindings follow immediately from any source.
+        ValueField<bool> gestureField = MenuPatches.GetGestureField(handler);
+        if (gestureField.Value.Value != ProximityGrabCustomGestureMod.GestureMode)
+            gestureField.Value.Value = ProximityGrabCustomGestureMod.GestureMode;
+        if (ProximityGrabCustomGestureMod.GestureMode != LastGestureMode)
+        {
+            LastGestureMode = ProximityGrabCustomGestureMod.GestureMode;
+            handler.Input.InvalidateBindings();
+        }
+        if (!ProximityGrabCustomGestureMod.GestureMode)
+        {
+            // Gesture mode off: fully-stock behavior. Clear hysteresis memories so
+            // re-enabling starts clean; any in-flight gesture grab ends via Release below.
+            state.FistEngaged = false;
+            state.PinchEngaged = false;
+            state.GestureDriven = false;
+        }
+        bool fistRaw = ProximityGrabCustomGestureMod.GestureMode && UpdateFist(ownHand, ref state.FistEngaged);
+        bool pinchRaw = ProximityGrabCustomGestureMod.GestureMode && UpdatePinch(handler, ownHand, ref state.PinchEngaged);
         bool fist = ProximityGrabCustomGestureMod.FistGrabEnabled && fistRaw;
         bool pinch = ProximityGrabCustomGestureMod.PrecisionGrabEnabled && pinchRaw && !fist;
 
@@ -255,7 +276,7 @@ internal static class FistGesture
     {
         try
         {
-            if (!ProximityGrabCustomGestureMod.DebugShowPinch || hand == null)
+            if (!ProximityGrabCustomGestureMod.DebugShowPinch || !ProximityGrabCustomGestureMod.GestureMode || hand == null)
                 return;
             var root = handler.LocalUserRoot;
             if (root == null)
