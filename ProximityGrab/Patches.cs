@@ -186,8 +186,8 @@ internal static class MenuPatches
             if (!LastMenuOptions.TryGetValue(__instance, out MenuOptionsHolder? holder) || holder.Value != GrabbingOption)
                 return;
             ValueField<bool> field = GetGestureField(__instance);
-            var onColor = colorX.Orange;
-            var offColor = colorX.Blue;
+            var onColor = colorX.Cyan;
+            var offColor = colorX.Gray;
             menu.AddToggleItem(field.Value, (LocaleString)"Proximity Grab On", (LocaleString)"Proximity Grab Off", in onColor, in offColor);
         }
         catch (System.Exception e)
