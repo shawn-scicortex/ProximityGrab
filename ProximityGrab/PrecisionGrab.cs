@@ -43,7 +43,7 @@ internal static class PrecisionGrab
 
         void LogDiag()
         {
-            UniLog.Log("ProximityGrab: frame diag " + BuildFrameDiag(handler, hand, root, frame, indexTip, thumbTip, origin));
+            // UniLog.Log("ProximityGrab: frame diag " + BuildFrameDiag(handler, hand, root, frame, indexTip, thumbTip, origin));
         }
 
         if (!_frameDiagLogged)

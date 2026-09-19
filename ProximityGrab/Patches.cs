@@ -75,12 +75,12 @@ internal static class Patch_InteractionHandler_Grab
             __result = false;
         }
         state.LastGrabResult = (bool)__result;
-        if (!state.LastGrabResult
-            && state.ActiveGesture == GrabGestureKind.Pinch
-            && ProximityGrabMod.DebugShowPinch)
-        {
-            UniLog.Log($"ProximityGrab: pinch grab failed: {PrecisionGrab.LastAttemptDetail}");
-        }
+        // if (!state.LastGrabResult
+        //     && state.ActiveGesture == GrabGestureKind.Pinch
+        //     && ProximityGrabMod.DebugShowPinch)
+        // {
+        //     UniLog.Log($"ProximityGrab: pinch grab failed: {PrecisionGrab.LastAttemptDetail}");
+        // }
         return false;
     }
 }
