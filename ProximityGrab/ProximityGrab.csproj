@@ -53,4 +53,24 @@
     <Message Text="Copying ProximityGrab.dll to $(ResonitePath)rml_mods" Importance="high" />
     <Copy SourceFiles="$(TargetDir)$(TargetFileName)" DestinationFolder="$(ResonitePath)rml_mods" ContinueOnError="true" />
   </Target>
+
+  <!-- Release zip: dotnet build -c Release -p:Dist=true
+       (opt-in like CopyToMods so plain dev builds never zip) -->
+  <Target Name="Dist" AfterTargets="Build" Condition="'$(Dist)'=='true'">
+    <PropertyGroup>
+      <DistStageDir>$(IntermediateOutputPath)dist-stage/</DistStageDir>
+      <DistZip>$(MSBuildProjectDirectory)/../dist/ProximityGrab-$(Version).zip</DistZip>
+    </PropertyGroup>
+    <ItemGroup>
+      <DistRootFiles Include="$(TargetPath)" />
+      <DistRootFiles Include="$(MSBuildProjectDirectory)/../README.md" />
+      <DistSrcFiles Include="$(MSBuildProjectDirectory)/*.cs;$(MSBuildProjectDirectory)/*.csproj" />
+    </ItemGroup>
+    <Copy SourceFiles="@(DistRootFiles)" DestinationFolder="$(DistStageDir)" />
+    <Copy SourceFiles="@(DistSrcFiles)" DestinationFolder="$(DistStageDir)src/" />
+    <MakeDir Directories="$(MSBuildProjectDirectory)/../dist" />
+    <ZipDirectory SourceDirectory="$(DistStageDir)" DestinationFile="$(DistZip)" Overwrite="true" />
+    <RemoveDir Directories="$(DistStageDir)" />
+    <Message Text="Release zip: $(DistZip)" Importance="high" />
+  </Target>
 </Project>
