@@ -331,7 +331,7 @@ internal static class FistGesture
                 handler.Debug.Text(in thumbMarker, "T", size, in cThumb, 0f, true);
                 handler.Debug.Text(in originMarker, "O", size, in cOrigin, 0f, true);
                 handler.Debug.Text(in wristMarker, "W", size, in cWrist, 0f, true);
-                handler.Debug.Sphere(in originMarker, ProximityGrabMod.PrecisionMaxRadius, in cSphere);
+                handler.Debug.Sphere(in originMarker, ProximityGrabMod.PrecisionMaxRadius, in cSphere, local: true);
             }
             // Fist grab sphere: mirrors the engine non-laser overlap test
             // (InteractionHandler GRAB_RADIUS at Grabber slot, scaled by user root).
@@ -341,7 +341,7 @@ internal static class FistGesture
                 float3 grabCenter = grabber.Slot.GlobalPosition;
                 float grabRadius = InteractionHandler.GRAB_RADIUS * (handler.LocalUserRoot?.GlobalScale ?? 1f);
                 colorX fistSphere = colorX.Cyan.SetA(0.08f);
-                handler.Debug.Sphere(in grabCenter, grabRadius, in fistSphere);
+                handler.Debug.Sphere(in grabCenter, grabRadius, in fistSphere, local: true);
             }
         }
         catch (Exception e)
