@@ -322,6 +322,11 @@ internal static class FistGesture
             string p = PrecisionGrab.LastAttemptDetail;
             if (p.Length > 36)
                 p = p.Substring(0, 36);
+            // Per-feature visual gates: each debug visual shows only when its
+            // feature is enabled. Letters/spheres carry their own per-finger gates.
+            bool showFist = ProximityGrabMod.FistGrabEnabled;
+            bool anyFinger = ProximityGrabMod.IndexPinchEnabled || ProximityGrabMod.MiddlePinchEnabled || ProximityGrabMod.RingPinchEnabled;
+            bool showPinch = ProximityGrabMod.PrecisionGrabEnabled && anyFinger;
             float fistAvg = AverageCurlDegrees(hand);
             float fistMin = MinCurlDegrees(hand);
             float fistMinJoint = MinJointCurlDegrees(hand);
@@ -352,28 +357,25 @@ internal static class FistGesture
             var fistColor = state.FistEngaged ? colorX.Green : colorX.White;
             var pinchColor = pinchAny ? colorX.Green : colorX.White;
             var indexColor = colorX.White;
-            handler.Debug.Text(in debugAnchorLine, fistLine, 0.08f, in fistColor, 0f, true);
-            handler.Debug.Text(in debugAnchorLine2, pinchLine, 0.08f, in pinchColor, 0f, true);
-            handler.Debug.Text(in debugAnchorLine3, indexLine, 0.08f, in indexColor, 0f, true);
+            if (showFist)
+                handler.Debug.Text(in debugAnchorLine, fistLine, 0.08f, in fistColor, 0f, true);
+            if (showPinch)
+                handler.Debug.Text(in debugAnchorLine2, pinchLine, 0.08f, in pinchColor, 0f, true);
+            if (showFist || showPinch)
+                handler.Debug.Text(in debugAnchorLine3, indexLine, 0.08f, in indexColor, 0f, true);
             DrawPinchFingerLetters(handler, hand, wristWorld, wristRot);
-            if (pinchFinger.Tip.IsTracking && hand.Thumb.Tip.IsTracking)
+            if (showPinch && pinchFinger.Tip.IsTracking && hand.Thumb.Tip.IsTracking)
             {
-                float3 pinchMarker = wristWorld + wristRot * pinchFinger.Tip.Position;
                 float3 thumbMarker = wristWorld + wristRot * hand.Thumb.Tip.Position;
-                float3 originMarker = MathX.Lerp(pinchMarker, thumbMarker, 0.5f);
                 float size = 0.06f;
                 colorX cThumb = colorX.Green;
-                colorX cOrigin = colorX.Yellow;
-                colorX cWrist = colorX.Blue;
                 handler.Debug.Text(in thumbMarker, "T", size, in cThumb, 0f, true);
-                handler.Debug.Text(in originMarker, "O", size, in cOrigin, 0f, true);
-                handler.Debug.Text(in wristMarker, "W", size, in cWrist, 0f, true);
                 DrawPinchFingerSpheres(handler, hand, wristWorld, wristRot, thumbMarker, state);
             }
             // Fist grab sphere: mirrors the engine non-laser overlap test
             // (InteractionHandler GRAB_RADIUS at Grabber slot, scaled by user root).
             var grabber = handler.Grabber;
-            if (grabber != null)
+            if (showFist && grabber != null)
             {
                 float3 grabCenter = grabber.Slot.GlobalPosition;
                 float grabRadius = InteractionHandler.GRAB_RADIUS * (handler.LocalUserRoot?.GlobalScale ?? 1f);
@@ -406,8 +408,11 @@ internal static class FistGesture
 
     // One letter per enabled pinching finger, always visible (own tip tracking
     // only — no thumb requirement), so fingers stay identifiable idle or mid-grab.
+    // Hidden entirely when precision grabbing is master-disabled, matching T.
     private static void DrawPinchFingerLetters(InteractionHandler handler, Hand hand, float3 wristWorld, floatQ wristRot)
     {
+        if (!ProximityGrabMod.PrecisionGrabEnabled)
+            return;
         DrawPinchFingerLetter(handler, hand, FingerType.Index, ProximityGrabMod.IndexPinchEnabled, wristWorld, wristRot);
         DrawPinchFingerLetter(handler, hand, FingerType.Middle, ProximityGrabMod.MiddlePinchEnabled, wristWorld, wristRot);
         DrawPinchFingerLetter(handler, hand, FingerType.Ring, ProximityGrabMod.RingPinchEnabled, wristWorld, wristRot);
@@ -427,9 +432,12 @@ internal static class FistGesture
 
     // One grab sphere per enabled pinching finger: ghosts at very low alpha so
     // the user sees where each finger would sweep, with the actively pinching
-    // finger popped to full debug alpha.
+    // finger popped to full debug alpha. Hidden entirely when precision
+    // grabbing is master-disabled, matching the letters.
     private static void DrawPinchFingerSpheres(InteractionHandler handler, Hand hand, float3 wristWorld, floatQ wristRot, float3 thumbMarker, ProximityGrabState state)
     {
+        if (!ProximityGrabMod.PrecisionGrabEnabled)
+            return;
         DrawPinchFingerSphere(handler, hand, FingerType.Index, ProximityGrabMod.IndexPinchEnabled,
             state.GestureFinger == FingerType.Index && state.PinchEngagedIndex, wristWorld, wristRot, thumbMarker);
         DrawPinchFingerSphere(handler, hand, FingerType.Middle, ProximityGrabMod.MiddlePinchEnabled,
