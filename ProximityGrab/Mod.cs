@@ -5,7 +5,7 @@ namespace ProximityGrab;
 
 public class ProximityGrabMod : ResoniteMod
 {
-    internal const string VERSION_CONSTANT = "0.9.1";
+    internal const string VERSION_CONSTANT = "0.9.2";
 
     // RML configuration keys (persisted to rml_config/ProximityGrab.json,
     // editable via config-manager UIs or by editing the JSON while the game is stopped).

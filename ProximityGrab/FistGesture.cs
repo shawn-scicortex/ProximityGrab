@@ -91,7 +91,11 @@ internal static class FistGesture
         }
         else if (!state.ProximityGrabActive && gesture != GrabGestureKind.None)
         {
-            if (handler.Grabber?.IsHoldingObjects == true)
+            // Occupied hand (holding or grip-equipped, mirroring the engine's own
+            // IsHoldingObjects || HasGripEquippedTool test): gestures wait.
+            // A grip-equipped tool leaves the Grabber empty, so IsHoldingObjects
+            // alone would miss it and EndGrab would later drop both items.
+            if (handler.Grabber?.IsHoldingObjects == true || handler.HasGripEquippedTool)
                 return;
             state.ProximityGrabActive = true;
             state.ActiveGesture = gesture;
@@ -298,7 +302,7 @@ internal static class FistGesture
             float fistThreshold = state.FistEngaged
                 ? ProximityGrabMod.FistReleaseDegrees
                 : ProximityGrabMod.FistEngageDegrees;
-            string fistLine = $"{side} Fist avg:{FormatDegrees(fistAvg)}/{fistThreshold:0} min:{FormatDegrees(fistMin)} jm:{FormatDegrees(fistMinJoint)} eng:{(state.FistEngaged ? "Y" : "N")}";
+            string fistLine = $"{side} Fist avg:{FormatDegrees(fistAvg)}/{fistThreshold:0} min:{FormatDegrees(fistMin)} jm:{FormatDegrees(fistMinJoint)} eng:{(state.FistEngaged ? "Y" : "N")} eq:{(handler.HasGripEquippedTool ? "Y" : "N")}";
             string pinchLine = $"{side} Pinch d:{distance:F3} idx:{CurlDegrees(hand.Index):F0}/{ProximityGrabMod.PinchMaxIndexCurlDegrees:0} th:{ThumbTrackingCount(hand)} eng:{(state.PinchEngaged ? "Y" : "N")}";
             Span<float> indexJoints = stackalloc float[3];
             int indexTracked = JointCurlDegrees(hand.Index, indexJoints);
