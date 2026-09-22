@@ -66,7 +66,7 @@ internal static class Patch_InteractionHandler_Grab
         try
         {
             __result = state.ActiveGesture == GrabGestureKind.Pinch
-                ? PrecisionGrab.TryGrab(__instance, state.GestureHand)
+                ? PrecisionGrab.TryGrab(__instance, state.GestureHand, state.GestureFinger)
                 : (bool)(Methods.GrabNoLaser.Invoke(__instance, new object[] { false, null! }) ?? false);
         }
         catch (System.Exception e)

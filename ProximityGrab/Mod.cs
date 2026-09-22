@@ -5,7 +5,7 @@ namespace ProximityGrab;
 
 public class ProximityGrabMod : ResoniteMod
 {
-    internal const string VERSION_CONSTANT = "0.9.2";
+    internal const string VERSION_CONSTANT = "0.10.0";
 
     // RML configuration keys (persisted to rml_config/ProximityGrab.json,
     // editable via config-manager UIs or by editing the JSON while the game is stopped).
@@ -21,7 +21,19 @@ public class ProximityGrabMod : ResoniteMod
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> PrecisionGrabEnabledKey =
-        new("PrecisionGrabEnabled", "Index-thumb pinch grab enabled ", () => true);
+        new("PrecisionGrabEnabled", "Pinch grab enabled (any finger)", () => true);
+
+    [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<bool> IndexPinchEnabledKey =
+        new("IndexPinch", "Index-thumb pinch triggers precision grab", () => true);
+
+    [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<bool> MiddlePinchEnabledKey =
+        new("MiddlePinch", "Middle-thumb pinch triggers precision grab", () => true);
+
+    [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<bool> RingPinchEnabledKey =
+        new("RingPinch", "Ring-thumb pinch triggers precision grab", () => true);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> DebugShowPinchKey =
@@ -61,7 +73,7 @@ public class ProximityGrabMod : ResoniteMod
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> PinchMaxIndexCurlDegreesKey =
-        new("PinchMaxIndexCurlDegrees", "Index curl angle above which pinch is rejected", () => 140f, valueValidator: IsNonNegativeFinite);
+        new("PinchMaxIndexCurlDegrees", "Pinching-finger curl above which pinch is rejected", () => 140f, valueValidator: IsNonNegativeFinite);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> PrecisionMinRadiusKey =
@@ -81,6 +93,9 @@ public class ProximityGrabMod : ResoniteMod
     // Initialized from the keys so each default literal exists exactly once, above.
     internal static bool FistGrabEnabled = FistGrabEnabledKey.Value;
     internal static bool PrecisionGrabEnabled = PrecisionGrabEnabledKey.Value;
+    internal static bool IndexPinchEnabled = IndexPinchEnabledKey.Value;
+    internal static bool MiddlePinchEnabled = MiddlePinchEnabledKey.Value;
+    internal static bool RingPinchEnabled = RingPinchEnabledKey.Value;
 
     // Debug overlay (world-space text above each wrist)
     internal static bool DebugShowPinch = DebugShowPinchKey.Value;
@@ -138,6 +153,9 @@ public class ProximityGrabMod : ResoniteMod
     {
         FistGrabEnabled = FistGrabEnabledKey.Value;
         PrecisionGrabEnabled = PrecisionGrabEnabledKey.Value;
+        IndexPinchEnabled = IndexPinchEnabledKey.Value;
+        MiddlePinchEnabled = MiddlePinchEnabledKey.Value;
+        RingPinchEnabled = RingPinchEnabledKey.Value;
         DebugShowPinch = DebugShowPinchKey.Value;
         GestureMode = GestureModeKey.Value;
         FistEngageDegrees = FistEngageDegreesKey.Value;

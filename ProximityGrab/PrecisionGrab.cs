@@ -5,6 +5,7 @@ using System.Text;
 using Elements.Core;
 using FrooxEngine;
 using HarmonyLib;
+using Renderite.Shared;
 
 namespace ProximityGrab;
 
@@ -18,7 +19,7 @@ internal static class PrecisionGrab
 
     private static bool _frameDiagLogged;
 
-    public static bool TryGrab(InteractionHandler handler, Hand? hand)
+    public static bool TryGrab(InteractionHandler handler, Hand? hand, FingerType fingerType)
     {
         LastAttemptDetail = "running";
         if (hand == null)
@@ -36,14 +37,15 @@ internal static class PrecisionGrab
         Slot frame = root.Slot;
         float3 wristWorld = frame.LocalPointToGlobal(hand.Wrist.Position);
         floatQ wristRot = frame.LocalRotationToGlobal(hand.Wrist.Rotation);
-        var indexTip = wristWorld + wristRot * hand.Index.Tip.Position;
+        Finger pinchFinger = hand[fingerType];
+        var fingerTip = wristWorld + wristRot * pinchFinger.Tip.Position;
         var thumbTip = wristWorld + wristRot * hand.Thumb.Tip.Position;
         float scale = 1f;
-        float3 origin = MathX.Lerp(indexTip, thumbTip, 0.5f);
+        float3 origin = MathX.Lerp(fingerTip, thumbTip, 0.5f);
 
         void LogDiag()
         {
-            // UniLog.Log("ProximityGrab: frame diag " + BuildFrameDiag(handler, hand, root, frame, indexTip, thumbTip, origin));
+            // UniLog.Log("ProximityGrab: frame diag " + BuildFrameDiag(handler, hand, root, frame, fingerTip, thumbTip, origin));
         }
 
         if (!_frameDiagLogged)

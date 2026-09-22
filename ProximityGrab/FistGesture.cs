@@ -63,11 +63,13 @@ internal static class FistGesture
             // Gesture mode off: fully-stock behavior. Clear hysteresis memories so
             // re-enabling starts clean; any in-flight gesture grab ends via Release below.
             state.FistEngaged = false;
-            state.PinchEngaged = false;
+            state.PinchEngagedIndex = false;
+            state.PinchEngagedMiddle = false;
+            state.PinchEngagedRing = false;
             state.GestureDriven = false;
         }
         bool fistRaw = ProximityGrabMod.GestureMode && UpdateFist(ownHand, ref state.FistEngaged);
-        bool pinchRaw = ProximityGrabMod.GestureMode && UpdatePinch(handler, ownHand, ref state.PinchEngaged);
+        bool pinchRaw = ProximityGrabMod.GestureMode && UpdatePinchFingers(handler, ownHand, state);
         bool fist = ProximityGrabMod.FistGrabEnabled && fistRaw;
         bool pinch = ProximityGrabMod.PrecisionGrabEnabled && pinchRaw && !fist;
 
@@ -130,9 +132,49 @@ internal static class FistGesture
         return engaged;
     }
 
-    private static bool UpdatePinch(InteractionHandler handler, Hand? hand, ref bool prevEngaged)
+    // Nearest engaged fingertip wins; each finger keeps its own hysteresis
+    // memory so engage/release thresholds don't leak across fingers.
+    private static bool UpdatePinchFingers(InteractionHandler handler, Hand? hand, ProximityGrabState state)
     {
-        if (!IsUsableForPinch(hand))
+        bool pinchIndex = false, pinchMiddle = false, pinchRing = false;
+        float dIndex = float.NaN, dMiddle = float.NaN, dRing = float.NaN;
+        if (ProximityGrabMod.IndexPinchEnabled)
+            pinchIndex = UpdatePinchFinger(handler, hand, FingerType.Index, ref state.PinchEngagedIndex, out dIndex);
+        else
+            state.PinchEngagedIndex = false;
+        if (ProximityGrabMod.MiddlePinchEnabled)
+            pinchMiddle = UpdatePinchFinger(handler, hand, FingerType.Middle, ref state.PinchEngagedMiddle, out dMiddle);
+        else
+            state.PinchEngagedMiddle = false;
+        if (ProximityGrabMod.RingPinchEnabled)
+            pinchRing = UpdatePinchFinger(handler, hand, FingerType.Ring, ref state.PinchEngagedRing, out dRing);
+        else
+            state.PinchEngagedRing = false;
+
+        bool pinchRaw = false;
+        float best = float.PositiveInfinity;
+        FingerType winner = state.GestureFinger;
+        if (pinchIndex && dIndex < best) { pinchRaw = true; best = dIndex; winner = FingerType.Index; }
+        if (pinchMiddle && dMiddle < best) { pinchRaw = true; best = dMiddle; winner = FingerType.Middle; }
+        if (pinchRing && dRing < best) { pinchRaw = true; best = dRing; winner = FingerType.Ring; }
+        if (pinchRaw)
+            state.GestureFinger = winner;
+        return pinchRaw;
+    }
+
+    private static bool UpdatePinchFinger(InteractionHandler handler, Hand? hand, FingerType fingerType, ref bool prevEngaged, out float distance)
+    {
+        distance = float.NaN;
+        if (hand == null)
+        {
+            prevEngaged = false;
+            return false;
+        }
+        Finger finger = hand[fingerType];
+        if (!IsUsableThumb(hand.Thumb)
+            || !IsUsableFinger(finger)
+            || !finger.Tip.IsTracking
+            || !hand.Thumb.Tip.IsTracking)
         {
             prevEngaged = false;
             return false;
@@ -143,14 +185,14 @@ internal static class FistGesture
             prevEngaged = false;
             return false;
         }
-        if (CurlDegrees(hand!.Index) >= ProximityGrabMod.PinchMaxIndexCurlDegrees)
+        if (CurlDegrees(finger) >= ProximityGrabMod.PinchMaxIndexCurlDegrees)
         {
             prevEngaged = false;
             return false;
         }
-        float3 indexTip = root.Slot.LocalPointToGlobal(hand!.Index.Tip.Position);
-        float3 thumbTip = root.Slot.LocalPointToGlobal(hand!.Thumb.Tip.Position);
-        float distance = (indexTip - thumbTip).Magnitude / root.GlobalScale;
+        float3 fingerTip = root.Slot.LocalPointToGlobal(finger.Tip.Position);
+        float3 thumbTip = root.Slot.LocalPointToGlobal(hand.Thumb.Tip.Position);
+        distance = (fingerTip - thumbTip).Magnitude / root.GlobalScale;
         bool engaged = prevEngaged
             ? distance < ProximityGrabMod.PinchReleaseDistance
             : distance < ProximityGrabMod.PinchEngageDistance;
@@ -165,15 +207,6 @@ internal static class FistGesture
                && IsUsableFinger(hand.Middle)
                && IsUsableFinger(hand.Ring)
                && IsUsableFinger(hand.Pinky);
-    }
-
-    private static bool IsUsableForPinch(Hand? hand)
-    {
-        return hand != null
-               && IsUsableFinger(hand.Index)
-               && IsUsableThumb(hand.Thumb)
-               && hand.Index.Tip.IsTracking
-               && hand.Thumb.Tip.IsTracking;
     }
 
     private static bool IsUsableThumb(Finger thumb)
@@ -285,13 +318,6 @@ internal static class FistGesture
             var root = handler.LocalUserRoot;
             if (root == null)
                 return;
-            float distance = float.NaN;
-            if (hand.Index.Tip.IsTracking && hand.Thumb.Tip.IsTracking)
-            {
-                float3 indexTip = root.Slot.LocalPointToGlobal(hand.Index.Tip.Position);
-                float3 thumbTip = root.Slot.LocalPointToGlobal(hand.Thumb.Tip.Position);
-                distance = (indexTip - thumbTip).Magnitude / root.GlobalScale;
-            }
             string side = handler.Side.Value == Chirality.Left ? "L" : "R";
             string p = PrecisionGrab.LastAttemptDetail;
             if (p.Length > 36)
@@ -303,7 +329,16 @@ internal static class FistGesture
                 ? ProximityGrabMod.FistReleaseDegrees
                 : ProximityGrabMod.FistEngageDegrees;
             string fistLine = $"{side} Fist avg:{FormatDegrees(fistAvg)}/{fistThreshold:0} min:{FormatDegrees(fistMin)} jm:{FormatDegrees(fistMinJoint)} eng:{(state.FistEngaged ? "Y" : "N")} eq:{(handler.HasGripEquippedTool ? "Y" : "N")}";
-            string pinchLine = $"{side} Pinch d:{distance:F3} idx:{CurlDegrees(hand.Index):F0}/{ProximityGrabMod.PinchMaxIndexCurlDegrees:0} th:{ThumbTrackingCount(hand)} eng:{(state.PinchEngaged ? "Y" : "N")}";
+            Finger pinchFinger = hand[state.GestureFinger];
+            float pinchDist = float.NaN;
+            if (pinchFinger.Tip.IsTracking && hand.Thumb.Tip.IsTracking)
+            {
+                float3 pinchTip = root.Slot.LocalPointToGlobal(pinchFinger.Tip.Position);
+                float3 pinchThumbTip = root.Slot.LocalPointToGlobal(hand.Thumb.Tip.Position);
+                pinchDist = (pinchTip - pinchThumbTip).Magnitude / root.GlobalScale;
+            }
+            bool pinchAny = state.PinchEngagedIndex || state.PinchEngagedMiddle || state.PinchEngagedRing;
+            string pinchLine = $"{side} Pinch {PinchFingerLabel(state.GestureFinger)} d:{pinchDist:F3} curl:{CurlDegrees(pinchFinger):F0}/{ProximityGrabMod.PinchMaxIndexCurlDegrees:0} th:{ThumbTrackingCount(hand)} eng:{(pinchAny ? "Y" : "N")}";
             Span<float> indexJoints = stackalloc float[3];
             int indexTracked = JointCurlDegrees(hand.Index, indexJoints);
             string indexLine = $"{side} Idx j:{FormatJoint(indexJoints, indexTracked, 0)}/{FormatJoint(indexJoints, indexTracked, 1)}/{FormatJoint(indexJoints, indexTracked, 2)} tot:{FormatDegrees(CurlDegrees(hand.Index))} n:{indexTracked}";
@@ -315,27 +350,26 @@ internal static class FistGesture
             float3 debugAnchorLine2 = debugAnchorLine + wristRot * float3.Up * 0.11f;
             float3 debugAnchorLine3 = debugAnchorLine2 + wristRot * float3.Up * 0.11f;
             var fistColor = state.FistEngaged ? colorX.Green : colorX.White;
-            var pinchColor = state.PinchEngaged ? colorX.Green : colorX.White;
+            var pinchColor = pinchAny ? colorX.Green : colorX.White;
             var indexColor = colorX.White;
             handler.Debug.Text(in debugAnchorLine, fistLine, 0.08f, in fistColor, 0f, true);
             handler.Debug.Text(in debugAnchorLine2, pinchLine, 0.08f, in pinchColor, 0f, true);
             handler.Debug.Text(in debugAnchorLine3, indexLine, 0.08f, in indexColor, 0f, true);
-            if (hand.Index.Tip.IsTracking && hand.Thumb.Tip.IsTracking)
+            if (pinchFinger.Tip.IsTracking && hand.Thumb.Tip.IsTracking)
             {
-                float3 indexMarker = wristWorld + wristRot * hand.Index.Tip.Position;
+                float3 pinchMarker = wristWorld + wristRot * pinchFinger.Tip.Position;
                 float3 thumbMarker = wristWorld + wristRot * hand.Thumb.Tip.Position;
-                float3 originMarker = MathX.Lerp(indexMarker, thumbMarker, 0.5f);
+                float3 originMarker = MathX.Lerp(pinchMarker, thumbMarker, 0.5f);
                 float size = 0.06f;
-                colorX cIndex = colorX.Red;
+                colorX cPinch = PinchFingerColor(state.GestureFinger);
                 colorX cThumb = colorX.Green;
                 colorX cOrigin = colorX.Yellow;
                 colorX cWrist = colorX.Blue;
-                colorX cSphere = colorX.Orange.SetA(0.1f);
-                handler.Debug.Text(in indexMarker, "I", size, in cIndex, 0f, true);
+                handler.Debug.Text(in pinchMarker, PinchFingerLabel(state.GestureFinger), size, in cPinch, 0f, true);
                 handler.Debug.Text(in thumbMarker, "T", size, in cThumb, 0f, true);
                 handler.Debug.Text(in originMarker, "O", size, in cOrigin, 0f, true);
                 handler.Debug.Text(in wristMarker, "W", size, in cWrist, 0f, true);
-                handler.Debug.Sphere(in originMarker, ProximityGrabMod.PrecisionMaxRadius, in cSphere, local: true);
+                DrawPinchFingerSpheres(handler, hand, wristWorld, wristRot, thumbMarker, state);
             }
             // Fist grab sphere: mirrors the engine non-laser overlap test
             // (InteractionHandler GRAB_RADIUS at Grabber slot, scaled by user root).
@@ -357,6 +391,46 @@ internal static class FistGesture
     private static string FormatDegrees(float degrees) =>
         float.IsNaN(degrees) ? "---" : $"{degrees:F0}";
 
+    private static colorX PinchFingerColor(FingerType finger) => finger switch
+    {
+        FingerType.Middle => colorX.Magenta,
+        FingerType.Ring => colorX.Orange,
+        _ => colorX.Red,
+    };
+
+    private static string PinchFingerLabel(FingerType finger) => finger switch
+    {
+        FingerType.Middle => "M",
+        FingerType.Ring => "R",
+        _ => "I",
+    };
+
+    // One grab sphere per enabled pinching finger: ghosts at very low alpha so
+    // the user sees where each finger would sweep, with the actively pinching
+    // finger popped to full debug alpha.
+    private static void DrawPinchFingerSpheres(InteractionHandler handler, Hand hand, float3 wristWorld, floatQ wristRot, float3 thumbMarker, ProximityGrabState state)
+    {
+        DrawPinchFingerSphere(handler, hand, FingerType.Index, ProximityGrabMod.IndexPinchEnabled,
+            state.GestureFinger == FingerType.Index && state.PinchEngagedIndex, wristWorld, wristRot, thumbMarker);
+        DrawPinchFingerSphere(handler, hand, FingerType.Middle, ProximityGrabMod.MiddlePinchEnabled,
+            state.GestureFinger == FingerType.Middle && state.PinchEngagedMiddle, wristWorld, wristRot, thumbMarker);
+        DrawPinchFingerSphere(handler, hand, FingerType.Ring, ProximityGrabMod.RingPinchEnabled,
+            state.GestureFinger == FingerType.Ring && state.PinchEngagedRing, wristWorld, wristRot, thumbMarker);
+    }
+
+    private static void DrawPinchFingerSphere(InteractionHandler handler, Hand hand, FingerType fingerType, bool enabled, bool active, float3 wristWorld, floatQ wristRot, float3 thumbMarker)
+    {
+        if (!enabled)
+            return;
+        Finger finger = hand[fingerType];
+        if (!finger.Tip.IsTracking)
+            return;
+        float3 fingerMarker = wristWorld + wristRot * finger.Tip.Position;
+        float3 origin = MathX.Lerp(fingerMarker, thumbMarker, 0.5f);
+        colorX sphere = PinchFingerColor(fingerType).SetA(active ? 0.1f : 0.02f);
+        handler.Debug.Sphere(in origin, ProximityGrabMod.PrecisionMaxRadius, in sphere, local: true);
+    }
+
     private static string FormatJoint(Span<float> joints, int trackedCount, int joint) =>
         joint < trackedCount - 2 ? $"{joints[joint]:F0}" : "-";
 
@@ -374,7 +448,9 @@ internal static class FistGesture
     {
         state.ProximityGrabActive = false;
         state.FistEngaged = false;
-        state.PinchEngaged = false;
+        state.PinchEngagedIndex = false;
+        state.PinchEngagedMiddle = false;
+        state.PinchEngagedRing = false;
         state.GestureHand = null;
         state.ActiveGesture = GrabGestureKind.None;
         Methods.EndGrab.Invoke(handler, new object[] { false });

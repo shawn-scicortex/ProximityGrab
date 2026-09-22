@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using FrooxEngine;
+using Renderite.Shared;
 
 namespace ProximityGrab;
 
@@ -17,7 +18,10 @@ internal sealed class ProximityGrabState
     public bool ProximityGrabActive;
     public GrabGestureKind ActiveGesture;
     public bool FistEngaged;
-    public bool PinchEngaged;
+    public bool PinchEngagedIndex;
+    public bool PinchEngagedMiddle;
+    public bool PinchEngagedRing;
+    public FingerType GestureFinger = FingerType.Index;
     public Hand? GestureHand;
     public bool LastGrabResult;
 
