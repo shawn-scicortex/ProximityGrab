@@ -29,11 +29,11 @@ public class ProximityGrabMod : ResoniteMod
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> MiddlePinchEnabledKey =
-        new("MiddlePinch", "Middle-thumb pinch triggers precision grab", () => true);
+        new("MiddlePinch", "Middle-thumb pinch triggers precision grab", () => false);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> RingPinchEnabledKey =
-        new("RingPinch", "Ring-thumb pinch triggers precision grab", () => true);
+        new("RingPinch", "Ring-thumb pinch triggers precision grab", () => false);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> DebugShowPinchKey =
