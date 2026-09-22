@@ -40,13 +40,20 @@ internal static class FistGesture
             }
         }
 
+        // The gesture system is VR hand-tracking only. Desktop sessions can still
+        // carry stale Hand devices with frozen IsTracking, so a dead skeleton must
+        // not drive detectors or draw the overlay: force no-hands when not in VR.
+        bool vrActive = handler.World.InputInterface.VR_Active;
+        if (!vrActive)
+            anyHands = false;
+
         if (state.HasTrackingHands != anyHands)
         {
             state.HasTrackingHands = anyHands;
             handler.Input.InvalidateBindings();
         }
 
-        Hand? ownHand = handler.Side.Value == Chirality.Left ? left : right;
+        Hand? ownHand = vrActive ? (handler.Side.Value == Chirality.Left ? left : right) : null;
         // Mirror the RML GestureMode key into this hand's menu field so config-UI
         // edits appear within a frame, and rebuild bindings on mode transitions so
         // the controller grip bindings follow immediately from any source.
