@@ -355,17 +355,16 @@ internal static class FistGesture
             handler.Debug.Text(in debugAnchorLine, fistLine, 0.08f, in fistColor, 0f, true);
             handler.Debug.Text(in debugAnchorLine2, pinchLine, 0.08f, in pinchColor, 0f, true);
             handler.Debug.Text(in debugAnchorLine3, indexLine, 0.08f, in indexColor, 0f, true);
+            DrawPinchFingerLetters(handler, hand, wristWorld, wristRot);
             if (pinchFinger.Tip.IsTracking && hand.Thumb.Tip.IsTracking)
             {
                 float3 pinchMarker = wristWorld + wristRot * pinchFinger.Tip.Position;
                 float3 thumbMarker = wristWorld + wristRot * hand.Thumb.Tip.Position;
                 float3 originMarker = MathX.Lerp(pinchMarker, thumbMarker, 0.5f);
                 float size = 0.06f;
-                colorX cPinch = PinchFingerColor(state.GestureFinger);
                 colorX cThumb = colorX.Green;
                 colorX cOrigin = colorX.Yellow;
                 colorX cWrist = colorX.Blue;
-                handler.Debug.Text(in pinchMarker, PinchFingerLabel(state.GestureFinger), size, in cPinch, 0f, true);
                 handler.Debug.Text(in thumbMarker, "T", size, in cThumb, 0f, true);
                 handler.Debug.Text(in originMarker, "O", size, in cOrigin, 0f, true);
                 handler.Debug.Text(in wristMarker, "W", size, in cWrist, 0f, true);
@@ -378,7 +377,7 @@ internal static class FistGesture
             {
                 float3 grabCenter = grabber.Slot.GlobalPosition;
                 float grabRadius = InteractionHandler.GRAB_RADIUS * (handler.LocalUserRoot?.GlobalScale ?? 1f);
-                colorX fistSphere = colorX.Cyan.SetA(0.08f);
+                colorX fistSphere = colorX.Cyan.SetA(state.FistEngaged ? 0.08f : 0.02f);
                 handler.Debug.Sphere(in grabCenter, grabRadius, in fistSphere, local: true);
             }
         }
@@ -404,6 +403,27 @@ internal static class FistGesture
         FingerType.Ring => "R",
         _ => "I",
     };
+
+    // One letter per enabled pinching finger, always visible (own tip tracking
+    // only — no thumb requirement), so fingers stay identifiable idle or mid-grab.
+    private static void DrawPinchFingerLetters(InteractionHandler handler, Hand hand, float3 wristWorld, floatQ wristRot)
+    {
+        DrawPinchFingerLetter(handler, hand, FingerType.Index, ProximityGrabMod.IndexPinchEnabled, wristWorld, wristRot);
+        DrawPinchFingerLetter(handler, hand, FingerType.Middle, ProximityGrabMod.MiddlePinchEnabled, wristWorld, wristRot);
+        DrawPinchFingerLetter(handler, hand, FingerType.Ring, ProximityGrabMod.RingPinchEnabled, wristWorld, wristRot);
+    }
+
+    private static void DrawPinchFingerLetter(InteractionHandler handler, Hand hand, FingerType fingerType, bool enabled, float3 wristWorld, floatQ wristRot)
+    {
+        if (!enabled)
+            return;
+        Finger finger = hand[fingerType];
+        if (!finger.Tip.IsTracking)
+            return;
+        float3 marker = wristWorld + wristRot * finger.Tip.Position;
+        colorX color = PinchFingerColor(fingerType);
+        handler.Debug.Text(in marker, PinchFingerLabel(fingerType), 0.06f, in color, 0f, true);
+    }
 
     // One grab sphere per enabled pinching finger: ghosts at very low alpha so
     // the user sees where each finger would sweep, with the actively pinching
