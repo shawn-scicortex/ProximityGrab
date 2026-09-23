@@ -6,17 +6,27 @@ hand instead of the laser.
 
 ### Install
 
-Build and copy to the game's `rml_mods` folder:
+1. Install [ResoniteModLoader](https://github.com/resonite-modding-group/ResoniteModLoader)
 
-```powershell
-dotnet build ProximityGrab\ProximityGrabCustomGesture\ProximityGrabCustomGesture.csproj -p:CopyToMods=true
-```
+2. Place [ProximityGrab.dll](https://github.com/shawn-scicortex/ProximityGrab/releases/latest/download/ProximityGrab.dll) into your `rml_mods` folder. By default on Windows, this is `C:\Program Files (x86)\Steam\steamapps\common\Resonite\rml_mods\`
+
+3. Start the game.
+
+4. Enable hand tracking and you should see debug text and grab spheres around your hands and fingers. This can be turned off in the config (see below).
 
 Uninstalling the mod restores stock grab behavior completely.
 
+### Building
+
+Build and copy to the game's `rml_mods` folder:
+
+```powershell
+dotnet build ProximityGrab\ProximityGrab\ProximityGrab.csproj -p:CopyToMods=true
+```
+
 ### Disable SteamVR Gesture Bindings
 
-To eliminate conflicting or duplicate actions, make sure you do not have any bindings in SteamVR for the pinch and fist gestures. This mod detects its own index-thumb pinch and fist gestures.
+To eliminate conflicting or duplicate actions, make sure you do not have any bindings in SteamVR for the index/middle/ring-thumb pinch and fist gestures. This mod detects its own index/middle/ring-thumb pinches and fist gestures.
 
 ### Configuration
 
