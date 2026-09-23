@@ -1,3 +1,9 @@
+/* 
+SPDX-License-Identifier: LGPL-3.0-only
+Copyright (C) 2026 Shawn Betts
+Portions © 2025 XDelta (Resonite Mod Template ExampleMod)
+*/
+
 using System.Runtime.CompilerServices;
 using FrooxEngine;
 using Renderite.Shared;
