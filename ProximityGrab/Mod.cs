@@ -1,7 +1,7 @@
 /*
 SPDX-License-Identifier: LGPL-3.0-only
 Copyright (C) 2026 Shawn Betts
-Portions © 2025 XDelta (Resonite Mod Template ExampleMod)
+Portions ï¿½ 2025 XDelta (Resonite Mod Template ExampleMod)
 */
 
 using HarmonyLib;
@@ -11,7 +11,7 @@ namespace ProximityGrab;
 
 public class ProximityGrabMod : ResoniteMod
 {
-    internal const string VERSION_CONSTANT = "0.10.0";
+    internal const string VERSION_CONSTANT = "0.10.1";
 
     // RML configuration keys (persisted to rml_config/ProximityGrab.json,
     // editable via config-manager UIs or by editing the JSON while the game is stopped).
@@ -44,6 +44,10 @@ public class ProximityGrabMod : ResoniteMod
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> DebugShowPinchKey =
         new("DebugShowPinch", "Show grip debug visuals", () => true);
+
+    [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<bool> DebugPinchLinesKey =
+        new("DebugPinchLines", "Show fingertip-to-midpoint debug lines", () => false);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> FistEngageDegreesKey =
@@ -102,6 +106,7 @@ public class ProximityGrabMod : ResoniteMod
     internal static bool IndexPinchEnabled = IndexPinchEnabledKey.Value;
     internal static bool MiddlePinchEnabled = MiddlePinchEnabledKey.Value;
     internal static bool RingPinchEnabled = RingPinchEnabledKey.Value;
+    internal static bool DebugPinchLines = DebugPinchLinesKey.Value;
 
     // Debug overlay (world-space text above each wrist)
     internal static bool DebugShowPinch = DebugShowPinchKey.Value;
@@ -162,6 +167,7 @@ public class ProximityGrabMod : ResoniteMod
         IndexPinchEnabled = IndexPinchEnabledKey.Value;
         MiddlePinchEnabled = MiddlePinchEnabledKey.Value;
         RingPinchEnabled = RingPinchEnabledKey.Value;
+        DebugPinchLines = DebugPinchLinesKey.Value;
         DebugShowPinch = DebugShowPinchKey.Value;
         GestureMode = GestureModeKey.Value;
         FistEngageDegrees = FistEngageDegreesKey.Value;
