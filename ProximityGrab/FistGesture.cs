@@ -408,8 +408,8 @@ internal static class FistGesture
     private static colorX PinchFingerColor(FingerType finger) => finger switch
     {
         FingerType.Middle => colorX.Magenta,
-        FingerType.Ring => colorX.Orange,
-        _ => colorX.Red,
+        FingerType.Ring => colorX.Red,
+        _ => colorX.Orange,
     };
 
     private static string PinchFingerLabel(FingerType finger) => finger switch
