@@ -370,12 +370,16 @@ internal static class FistGesture
             var fistColor = state.FistEngaged ? colorX.Green : colorX.White;
             var pinchColor = pinchAny ? colorX.Green : colorX.White;
             var indexColor = colorX.White;
-            if (showFist)
-                handler.Debug.Text(in debugAnchorLine, fistLine, 0.08f, in fistColor, 0f, true);
-            if (showPinch)
-                handler.Debug.Text(in debugAnchorLine2, pinchLine, 0.08f, in pinchColor, 0f, true);
-            if (showFist || showPinch)
-                handler.Debug.Text(in debugAnchorLine3, indexLine, 0.08f, in indexColor, 0f, true);
+            // Text lines honor the DebugText toggle; shapes below draw per their own gates.
+            if (ProximityGrabMod.DebugText)
+            {
+                if (showFist)
+                    handler.Debug.Text(in debugAnchorLine, fistLine, 0.08f, in fistColor, 0f, true);
+                if (showPinch)
+                    handler.Debug.Text(in debugAnchorLine2, pinchLine, 0.08f, in pinchColor, 0f, true);
+                if (showFist || showPinch)
+                    handler.Debug.Text(in debugAnchorLine3, indexLine, 0.08f, in indexColor, 0f, true);
+            }
             DrawPinchFingerGeometry(handler, hand, wristWorld, wristRot);
             if (showPinch && pinchFinger.Tip.IsTracking && hand.Thumb.Tip.IsTracking)
             {

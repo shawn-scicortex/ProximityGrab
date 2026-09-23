@@ -11,7 +11,7 @@ namespace ProximityGrab;
 
 public class ProximityGrabMod : ResoniteMod
 {
-    internal const string VERSION_CONSTANT = "0.10.1";
+    internal const string VERSION_CONSTANT = "0.10.2";
 
     // RML configuration keys (persisted to rml_config/ProximityGrab.json,
     // editable via config-manager UIs or by editing the JSON while the game is stopped).
@@ -44,6 +44,10 @@ public class ProximityGrabMod : ResoniteMod
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> DebugShowPinchKey =
         new("DebugShowPinch", "Show grip debug visuals", () => true);
+
+    [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<bool> DebugTextKey =
+        new("DebugText", "Show grip debug text overlay", () => false);
 
     [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<bool> DebugPinchLinesKey =
@@ -110,6 +114,7 @@ public class ProximityGrabMod : ResoniteMod
 
     // Debug overlay (world-space text above each wrist)
     internal static bool DebugShowPinch = DebugShowPinchKey.Value;
+    internal static bool DebugText = DebugTextKey.Value;
 
     // Gesture mode (global on/off for both hands, toggled from the HandGrab menu)
     internal static bool GestureMode = GestureModeKey.Value;
@@ -169,6 +174,7 @@ public class ProximityGrabMod : ResoniteMod
         RingPinchEnabled = RingPinchEnabledKey.Value;
         DebugPinchLines = DebugPinchLinesKey.Value;
         DebugShowPinch = DebugShowPinchKey.Value;
+        DebugText = DebugTextKey.Value;
         GestureMode = GestureModeKey.Value;
         FistEngageDegrees = FistEngageDegreesKey.Value;
         FistReleaseDegrees = FistReleaseDegreesKey.Value;
