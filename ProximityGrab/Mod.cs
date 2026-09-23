@@ -128,9 +128,9 @@ public class ProximityGrabMod : ResoniteMod
     internal static float PrecisionRadiusStep = PrecisionRadiusStepKey.Value;
 
     public override string Name => "ProximityGrab";
-    public override string Author => "YourName";
+    public override string Author => "Shawn Betts";
     public override string Version => VERSION_CONSTANT;
-    public override string Link => "https://github.com/<tbd>/ProximityGrab/";
+    public override string Link => "https://github.com/shawn-scicortex/ProximityGrab/";
 
     public override void OnEngineInit()
     {
