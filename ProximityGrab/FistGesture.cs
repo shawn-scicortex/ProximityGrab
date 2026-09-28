@@ -328,6 +328,11 @@ internal static class FistGesture
         {
             if (!ProximityGrabMod.DebugShowPinch || !ProximityGrabMod.GestureMode || hand == null)
                 return;
+            // Userspace (PrivateOverlay) has its own local handlers that also run
+            // this update; drawing there too doubles every visual, visibly so
+            // once the world user's scale differs from userspace's fixed 1.
+            if (handler.World == Userspace.UserspaceWorld)
+                return;
             var root = handler.LocalUserRoot;
             if (root == null)
                 return;
