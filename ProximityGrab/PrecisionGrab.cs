@@ -43,10 +43,12 @@ internal static class PrecisionGrab
         Slot frame = root.Slot;
         float3 wristWorld = frame.LocalPointToGlobal(hand.Wrist.Position);
         floatQ wristRot = frame.LocalRotationToGlobal(hand.Wrist.Rotation);
+        // Tip offsets (wrist-relative) and sweep radii are in user space; scale
+        // them with the user like the engine does for GRAB_RADIUS.
+        float scale = root.GlobalScale;
         Finger pinchFinger = hand[fingerType];
-        var fingerTip = wristWorld + wristRot * pinchFinger.Tip.Position;
-        var thumbTip = wristWorld + wristRot * hand.Thumb.Tip.Position;
-        float scale = 1f;
+        var fingerTip = wristWorld + wristRot * (pinchFinger.Tip.Position * scale);
+        var thumbTip = wristWorld + wristRot * (hand.Thumb.Tip.Position * scale);
         float3 origin = MathX.Lerp(fingerTip, thumbTip, 0.5f);
 
         void LogDiag()
