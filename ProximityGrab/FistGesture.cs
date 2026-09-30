@@ -23,6 +23,7 @@ internal static class FistGesture
     public static void Update(InteractionHandler handler)
     {
         var state = ProximityGrabState.Get(handler);
+        PrecisionGrab.UpdateMissFlash(handler, state);
 
         Devices.Clear();
         handler.World.InputInterface.GetDevices(Devices);
@@ -408,7 +409,7 @@ internal static class FistGesture
     private static string FormatDegrees(float degrees) =>
         float.IsNaN(degrees) ? "---" : $"{degrees:F0}";
 
-    private static colorX PinchFingerColor(FingerType finger) => finger switch
+    internal static colorX PinchFingerColor(FingerType finger) => finger switch
     {
         FingerType.Middle => colorX.Magenta,
         FingerType.Ring => colorX.Red,

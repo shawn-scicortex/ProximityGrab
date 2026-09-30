@@ -54,6 +54,14 @@ public class ProximityGrabMod : ResoniteMod
         new("DebugPinchLines", "Show fingertip-to-midpoint debug lines", () => false);
 
     [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<bool> PinchMissFlashKey =
+        new("PinchMissFlash", "Briefly show the pinch grab sphere when a pinch grabs nothing", () => true);
+
+    [AutoRegisterConfigKey]
+    internal static readonly ModConfigurationKey<float> PinchMissFlashSecondsKey =
+        new("PinchMissFlashSeconds", "Seconds the missed-pinch sphere stays visible", () => 0.25f, valueValidator: IsNonNegativeFinite);
+
+    [AutoRegisterConfigKey]
     internal static readonly ModConfigurationKey<float> FistEngageDegreesKey =
         new("FistEngageDegrees", "Avg finger curl degrees to engage fist grab", () => 150f, valueValidator: IsNonNegativeFinite);
 
@@ -116,6 +124,10 @@ public class ProximityGrabMod : ResoniteMod
     internal static bool DebugShowPinch = DebugShowPinchKey.Value;
     internal static bool DebugText = DebugTextKey.Value;
 
+    // Missed-pinch feedback (brief local sphere at the pinch sweep)
+    internal static bool PinchMissFlash = PinchMissFlashKey.Value;
+    internal static float PinchMissFlashSeconds = PinchMissFlashSecondsKey.Value;
+
     // Gesture mode (global on/off for both hands, toggled from the HandGrab menu)
     internal static bool GestureMode = GestureModeKey.Value;
 
@@ -175,6 +187,8 @@ public class ProximityGrabMod : ResoniteMod
         DebugPinchLines = DebugPinchLinesKey.Value;
         DebugShowPinch = DebugShowPinchKey.Value;
         DebugText = DebugTextKey.Value;
+        PinchMissFlash = PinchMissFlashKey.Value;
+        PinchMissFlashSeconds = PinchMissFlashSecondsKey.Value;
         GestureMode = GestureModeKey.Value;
         FistEngageDegrees = FistEngageDegreesKey.Value;
         FistReleaseDegrees = FistReleaseDegreesKey.Value;

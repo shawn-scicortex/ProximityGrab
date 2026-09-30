@@ -76,6 +76,7 @@ internal static class PrecisionGrab
             {
                 LastAttemptDetail = $"sweep=0 s={scale:0.##}";
                 LogDiag();
+                FlashMiss(handler, origin, scale, fingerType);
                 return false;
             }
 
@@ -88,6 +89,7 @@ internal static class PrecisionGrab
             {
                 LastAttemptDetail = $"no-grabbable c={colliders.Count} {HitNames(colliders)}";
                 LogDiag();
+                FlashMiss(handler, origin, scale, fingerType);
                 return false;
             }
             string firstFiltered = "";
@@ -96,6 +98,7 @@ internal static class PrecisionGrab
             {
                 LastAttemptDetail = $"filter-rejected c={colliders.Count} r={raw} [{firstRaw}] {HitNames(colliders)}";
                 LogDiag();
+                FlashMiss(handler, origin, scale, fingerType);
                 return false;
             }
 
@@ -104,6 +107,7 @@ internal static class PrecisionGrab
             {
                 LastAttemptDetail = $"grab=false c={colliders.Count} g={resolved} [{firstFiltered}] {HitNames(colliders)}";
                 LogDiag();
+                FlashMiss(handler, origin, scale, fingerType);
                 return false;
             }
 
@@ -121,6 +125,56 @@ internal static class PrecisionGrab
         {
             Pool.Return(ref colliders);
         }
+    }
+
+    // Missed-pinch feedback: the pinch sweep is invisible without debug
+    // visuals, so briefly show its max-radius sphere when a pinch ran the
+    // sweep but grabbed nothing. Skipped in Userspace, whose handlers also run
+    // every pinch and miss whenever the grab lands in the world, which would
+    // flash on every successful world grab.
+    //
+    // Drawn on a dedicated local (unsynced) slot rather than DebugManager:
+    // DebugManager sorts duration meshes to the front of its shared pool, so
+    // adding/expiring one shifts every per-frame debug mesh onto a pooled mesh
+    // of a different radius, and the async mesh regeneration shows the stale
+    // size for a frame (green/cyan blinks around the hand).
+    private static void FlashMiss(InteractionHandler handler, in float3 origin, float scale, FingerType fingerType)
+    {
+        if (!ProximityGrabMod.PinchMissFlash || ProximityGrabMod.PinchMissFlashSeconds <= 0f)
+            return;
+        if (handler.World == Userspace.UserspaceWorld)
+            return;
+        var state = ProximityGrabState.Get(handler);
+        if (state.MissFlashSlot == null || state.MissFlashSlot.IsRemoved
+            || state.MissFlashMesh == null || state.MissFlashMesh.IsRemoved
+            || state.MissFlashMaterial == null || state.MissFlashMaterial.IsRemoved)
+        {
+            state.MissFlashSlot?.Destroy();
+            Slot slot = handler.World.AddLocalSlot("ProximityGrab MissFlash");
+            var model = slot.AttachMesh<IcoSphereMesh, OverlayFresnelMaterial>();
+            DebugManager.SetupDebugMaterial(model.material);
+            model.mesh.Subdivisions.Value = 2;
+            state.MissFlashSlot = slot;
+            state.MissFlashMesh = model.mesh;
+            state.MissFlashMaterial = model.material;
+        }
+        float radius = ProximityGrabMod.PrecisionMaxRadius * scale;
+        if (state.MissFlashMesh.Radius.Value != radius)
+            state.MissFlashMesh.Radius.Value = radius;
+        GizmoHelper.SetMaterialColor(state.MissFlashMaterial, FistGesture.PinchFingerColor(fingerType).SetA(0.15f));
+        state.MissFlashSlot.GlobalPosition = origin;
+        state.MissFlashSlot.ActiveSelf = true;
+        state.MissFlashUntil = handler.Time.WorldTime + ProximityGrabMod.PinchMissFlashSeconds;
+    }
+
+    // Per-frame: hide the missed-pinch flash once its time is up.
+    internal static void UpdateMissFlash(InteractionHandler handler, ProximityGrabState state)
+    {
+        Slot? slot = state.MissFlashSlot;
+        if (slot == null || slot.IsRemoved || !slot.ActiveSelf)
+            return;
+        if (!ProximityGrabMod.PinchMissFlash || handler.Time.WorldTime >= state.MissFlashUntil)
+            slot.ActiveSelf = false;
     }
 
     private sealed class RigHolder
