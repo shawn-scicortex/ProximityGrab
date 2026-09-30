@@ -164,7 +164,7 @@ internal static class PrecisionGrab
             return false;
 
         Chirality side = handler.Side.Value;
-        HandPoser? poser = root.GetRegisteredComponent((HandPoser p) => p.Side.Value == side);
+        HandPoser? poser = FindHandPoser(root, side);
         if (poser != null && !poser.IsRemoved)
         {
             BipedRig? rig = GetRig(poser);
@@ -188,6 +188,35 @@ internal static class PrecisionGrab
         fingerPoint = wristWorld + wristRot * (finger.Tip.Position * scale);
         thumbPoint = wristWorld + wristRot * (hand.Thumb.Tip.Position * scale);
         return true;
+    }
+
+    // The HandPoser that actually follows this hand. Usually the avatar's
+    // only one, but a hand override equipped straight onto the tracked hand
+    // slot wins: the Full Body / Avatar Calibrator parents VR gloves under
+    // the hand AvatarObjectSlot while the avatar itself stands frozen in a
+    // reference pose (IK weight 0), and both posers stay registered.
+    private static HandPoser? FindHandPoser(UserRoot root, Chirality side)
+    {
+        BodyNode handNode = side == Chirality.Left ? BodyNode.LeftHand : BodyNode.RightHand;
+        Slot? handSlot = root.GetRegisteredComponent((FrooxEngine.CommonAvatar.AvatarObjectSlot s) => s.Node.Value == handNode)?.Slot;
+        List<HandPoser> posers = Pool.BorrowList<HandPoser>();
+        try
+        {
+            root.GetRegisteredComponents(posers, p => p.Side.Value == side && !p.IsRemoved && p.Slot.IsActive);
+            if (handSlot != null)
+            {
+                foreach (HandPoser p in posers)
+                {
+                    if (p.Slot.IsChildOf(handSlot))
+                        return p;
+                }
+            }
+            return posers.Count > 0 ? posers[0] : null;
+        }
+        finally
+        {
+            Pool.Return(ref posers);
+        }
     }
 
     private static Slot? AvatarPoint(HandPoser poser, BipedRig? rig, FingerType fingerType, Chirality side)
