@@ -387,12 +387,7 @@ internal static class FistGesture
                 if (showFist || showPinch)
                     handler.Debug.Text(in debugAnchorLine3, indexLine, 0.08f, in indexColor, 0f, true);
             }
-            DrawPinchFingerGeometry(handler, hand, scale, wristWorld, wristRot);
-            if (showPinch && pinchFinger.Tip.IsTracking && hand.Thumb.Tip.IsTracking)
-            {
-                float3 thumbMarker = wristWorld + wristRot * (hand.Thumb.Tip.Position * scale);
-                DrawPinchFingerSpheres(handler, hand, scale, wristWorld, wristRot, thumbMarker, state);
-            }
+            DrawPinchFingers(handler, hand, scale, state);
             // Fist grab sphere: mirrors the engine non-laser overlap test
             // (InteractionHandler GRAB_RADIUS at Grabber slot, scaled by user root).
             var grabber = handler.Grabber;
@@ -427,77 +422,54 @@ internal static class FistGesture
         _ => "I",
     };
 
-    // Solid fingertip markers + pinch lines (overlay meshes, so unlike the old
-    // depth-tested letters they can't be occluded by the hand itself): one tip
-    // sphere per enabled finger (own tip tracking only), one thumb sphere, and
-    // per-finger lines fingertip->midpoint (finger color) and thumb->midpoint
-    // (green). Hidden entirely when precision grabbing is master-disabled.
+    // Per enabled pinching finger, at the same points PrecisionGrab sweeps from
+    // (avatar fingers when available, see PrecisionGrab.TryGetPinchPoints):
+    // a solid tip marker (overlay mesh, so the hand can't occlude it), optional
+    // lines fingertip->midpoint (finger color) and thumb->midpoint (green), and
+    // a grab sphere ghosted at very low alpha, popped to full debug alpha for
+    // the actively pinching finger. One shared thumb marker. Hidden entirely
+    // when precision grabbing is master-disabled.
     private const float TipMarkerRadius = 0.002f;
     private const float PinchLineRadius = 0.001f;
 
-    private static void DrawPinchFingerGeometry(InteractionHandler handler, Hand hand, float scale, float3 wristWorld, floatQ wristRot)
+    private static void DrawPinchFingers(InteractionHandler handler, Hand hand, float scale, ProximityGrabState state)
     {
         if (!ProximityGrabMod.PrecisionGrabEnabled)
             return;
-        bool thumbTracked = hand.Thumb.Tip.IsTracking;
-        float3 thumbMarker = thumbTracked ? wristWorld + wristRot * (hand.Thumb.Tip.Position * scale) : float3.Zero;
-        if (thumbTracked)
+        bool thumbDrawn = false;
+        DrawPinchFinger(handler, hand, scale, FingerType.Index, ProximityGrabMod.IndexPinchEnabled,
+            state.GestureFinger == FingerType.Index && state.PinchEngagedIndex, ref thumbDrawn);
+        DrawPinchFinger(handler, hand, scale, FingerType.Middle, ProximityGrabMod.MiddlePinchEnabled,
+            state.GestureFinger == FingerType.Middle && state.PinchEngagedMiddle, ref thumbDrawn);
+        DrawPinchFinger(handler, hand, scale, FingerType.Ring, ProximityGrabMod.RingPinchEnabled,
+            state.GestureFinger == FingerType.Ring && state.PinchEngagedRing, ref thumbDrawn);
+    }
+
+    private static void DrawPinchFinger(InteractionHandler handler, Hand hand, float scale, FingerType fingerType, bool enabled, bool active, ref bool thumbDrawn)
+    {
+        if (!enabled)
+            return;
+        if (!PrecisionGrab.TryGetPinchPoints(handler, hand, fingerType, out float3 tipMarker, out float3 thumbMarker))
+            return;
+        if (!thumbDrawn)
         {
             colorX thumbGreen = colorX.Green;
             handler.Debug.Sphere(in thumbMarker, TipMarkerRadius * scale, in thumbGreen, local: true);
+            thumbDrawn = true;
         }
-        DrawPinchFingerTip(handler, hand, scale, FingerType.Index, ProximityGrabMod.IndexPinchEnabled, wristWorld, wristRot, thumbTracked, thumbMarker);
-        DrawPinchFingerTip(handler, hand, scale, FingerType.Middle, ProximityGrabMod.MiddlePinchEnabled, wristWorld, wristRot, thumbTracked, thumbMarker);
-        DrawPinchFingerTip(handler, hand, scale, FingerType.Ring, ProximityGrabMod.RingPinchEnabled, wristWorld, wristRot, thumbTracked, thumbMarker);
-    }
-
-    private static void DrawPinchFingerTip(InteractionHandler handler, Hand hand, float scale, FingerType fingerType, bool enabled, float3 wristWorld, floatQ wristRot, bool thumbTracked, float3 thumbMarker)
-    {
-        if (!enabled)
-            return;
-        Finger finger = hand[fingerType];
-        if (!finger.Tip.IsTracking)
-            return;
-        float3 tipMarker = wristWorld + wristRot * (finger.Tip.Position * scale);
         colorX color = PinchFingerColor(fingerType);
         handler.Debug.Sphere(in tipMarker, TipMarkerRadius * scale, in color, local: true);
-        if (!thumbTracked || !ProximityGrabMod.DebugPinchLines)
-            return;
         float3 midpoint = MathX.Lerp(tipMarker, thumbMarker, 0.5f);
-        colorX lineGreen = colorX.Green;
-        handler.Debug.Line(in tipMarker, in midpoint, in color, PinchLineRadius * scale, local: true);
-        handler.Debug.Line(in thumbMarker, in midpoint, in lineGreen, PinchLineRadius * scale, local: true);
-    }
-
-    // One grab sphere per enabled pinching finger: ghosts at very low alpha so
-    // the user sees where each finger would sweep, with the actively pinching
-    // finger popped to full debug alpha. Hidden entirely when precision
-    // grabbing is master-disabled, matching the letters.
-    private static void DrawPinchFingerSpheres(InteractionHandler handler, Hand hand, float scale, float3 wristWorld, floatQ wristRot, float3 thumbMarker, ProximityGrabState state)
-    {
-        if (!ProximityGrabMod.PrecisionGrabEnabled)
-            return;
-        DrawPinchFingerSphere(handler, hand, scale, FingerType.Index, ProximityGrabMod.IndexPinchEnabled,
-            state.GestureFinger == FingerType.Index && state.PinchEngagedIndex, wristWorld, wristRot, thumbMarker);
-        DrawPinchFingerSphere(handler, hand, scale, FingerType.Middle, ProximityGrabMod.MiddlePinchEnabled,
-            state.GestureFinger == FingerType.Middle && state.PinchEngagedMiddle, wristWorld, wristRot, thumbMarker);
-        DrawPinchFingerSphere(handler, hand, scale, FingerType.Ring, ProximityGrabMod.RingPinchEnabled,
-            state.GestureFinger == FingerType.Ring && state.PinchEngagedRing, wristWorld, wristRot, thumbMarker);
-    }
-
-    private static void DrawPinchFingerSphere(InteractionHandler handler, Hand hand, float scale, FingerType fingerType, bool enabled, bool active, float3 wristWorld, floatQ wristRot, float3 thumbMarker)
-    {
-        if (!enabled)
-            return;
-        Finger finger = hand[fingerType];
-        if (!finger.Tip.IsTracking)
-            return;
-        float3 fingerMarker = wristWorld + wristRot * (finger.Tip.Position * scale);
-        float3 origin = MathX.Lerp(fingerMarker, thumbMarker, 0.5f);
-        colorX sphere = PinchFingerColor(fingerType).SetA(active ? 0.1f : 0.02f);
+        if (ProximityGrabMod.DebugPinchLines)
+        {
+            colorX lineGreen = colorX.Green;
+            handler.Debug.Line(in tipMarker, in midpoint, in color, PinchLineRadius * scale, local: true);
+            handler.Debug.Line(in thumbMarker, in midpoint, in lineGreen, PinchLineRadius * scale, local: true);
+        }
+        colorX sphere = color.SetA(active ? 0.1f : 0.02f);
         // Match PrecisionGrab's sweep, which scales radii by the user root.
         float radius = ProximityGrabMod.PrecisionMaxRadius * scale;
-        handler.Debug.Sphere(in origin, radius, in sphere, local: true);
+        handler.Debug.Sphere(in midpoint, radius, in sphere, local: true);
     }
 
     private static string FormatJoint(Span<float> joints, int trackedCount, int joint) =>

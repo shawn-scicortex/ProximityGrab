@@ -7,6 +7,7 @@ Portions © 2025 XDelta (Resonite Mod Template ExampleMod)
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using Elements.Core;
 using FrooxEngine;
@@ -41,14 +42,14 @@ internal static class PrecisionGrab
         }
 
         Slot frame = root.Slot;
-        float3 wristWorld = frame.LocalPointToGlobal(hand.Wrist.Position);
-        floatQ wristRot = frame.LocalRotationToGlobal(hand.Wrist.Rotation);
-        // Tip offsets (wrist-relative) and sweep radii are in user space; scale
-        // them with the user like the engine does for GRAB_RADIUS.
+        // Sweep radii are in user space; scale them with the user like the
+        // engine does for GRAB_RADIUS.
         float scale = root.GlobalScale;
-        Finger pinchFinger = hand[fingerType];
-        var fingerTip = wristWorld + wristRot * (pinchFinger.Tip.Position * scale);
-        var thumbTip = wristWorld + wristRot * (hand.Thumb.Tip.Position * scale);
+        if (!TryGetPinchPoints(handler, hand, fingerType, out float3 fingerTip, out float3 thumbTip))
+        {
+            LastAttemptDetail = "no-tips";
+            return false;
+        }
         float3 origin = MathX.Lerp(fingerTip, thumbTip, 0.5f);
 
         void LogDiag()
@@ -120,6 +121,77 @@ internal static class PrecisionGrab
         {
             Pool.Return(ref colliders);
         }
+    }
+
+    private sealed class RigHolder
+    {
+        public BipedRig? Rig;
+        public bool Checked;
+    }
+
+    private static readonly ConditionalWeakTable<HandPoser, RigHolder> Rigs = new();
+
+    // Pinch point pair for one finger + thumb, in global space. Prefers the
+    // avatar's fingers so the sweep stays on the visible hand even when the
+    // tracked hand reaches past the avatar's arm: rigged tip bones when the
+    // avatar has them, else the HandPoser distal bones (what the engine's own
+    // PrecisionGrab uses). Falls back to the tracking skeleton only when the
+    // avatar can't supply both points, so the pair is never mixed.
+    internal static bool TryGetPinchPoints(InteractionHandler handler, Hand hand, FingerType fingerType, out float3 fingerPoint, out float3 thumbPoint)
+    {
+        fingerPoint = float3.Zero;
+        thumbPoint = float3.Zero;
+        var root = handler.LocalUserRoot;
+        if (root == null)
+            return false;
+
+        Chirality side = handler.Side.Value;
+        HandPoser? poser = root.GetRegisteredComponent((HandPoser p) => p.Side.Value == side);
+        if (poser != null && !poser.IsRemoved)
+        {
+            BipedRig? rig = GetRig(poser);
+            Slot? fingerSlot = AvatarPoint(poser, rig, fingerType, side);
+            Slot? thumbSlot = AvatarPoint(poser, rig, FingerType.Thumb, side);
+            if (fingerSlot != null && thumbSlot != null)
+            {
+                fingerPoint = fingerSlot.GlobalPosition;
+                thumbPoint = thumbSlot.GlobalPosition;
+                return true;
+            }
+        }
+
+        Finger finger = hand[fingerType];
+        if (!finger.Tip.IsTracking || !hand.Thumb.Tip.IsTracking)
+            return false;
+        Slot frame = root.Slot;
+        float scale = root.GlobalScale;
+        float3 wristWorld = frame.LocalPointToGlobal(hand.Wrist.Position);
+        floatQ wristRot = frame.LocalRotationToGlobal(hand.Wrist.Rotation);
+        fingerPoint = wristWorld + wristRot * (finger.Tip.Position * scale);
+        thumbPoint = wristWorld + wristRot * (hand.Thumb.Tip.Position * scale);
+        return true;
+    }
+
+    private static Slot? AvatarPoint(HandPoser poser, BipedRig? rig, FingerType fingerType, Chirality side)
+    {
+        Slot? slot = rig?.TryGetBone(fingerType.ComposeFinger(FingerSegmentType.Tip, side));
+        if (slot == null || slot.IsRemoved)
+            slot = poser[fingerType]?.FarthestSegment?.Root.Target;
+        return slot == null || slot.IsRemoved ? null : slot;
+    }
+
+    // FindCompatibleRig walks the hierarchy, so cache it per poser; a new
+    // avatar brings a new HandPoser, which invalidates this naturally.
+    private static BipedRig? GetRig(HandPoser poser)
+    {
+        RigHolder holder = Rigs.GetValue(poser, _ => new RigHolder());
+        // Rigless avatars are looked up once, not every frame.
+        if (!holder.Checked || (holder.Rig != null && holder.Rig.IsRemoved))
+        {
+            holder.Rig = poser.FindCompatibleRig();
+            holder.Checked = true;
+        }
+        return holder.Rig;
     }
 
     private static int FindGrabbables(Grabber? grabber, List<ICollider> colliders, Predicate<IGrabbable> filter, ref string firstName)
