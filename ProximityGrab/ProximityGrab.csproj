@@ -47,6 +47,10 @@
       <HintPath>$(ResonitePath)SkyFrost.Base.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="PhotonDust">
+      <HintPath>$(ResonitePath)PhotonDust.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(CopyToMods)'=='true'">

@@ -31,12 +31,8 @@ internal sealed class ProximityGrabState
     public Hand? GestureHand;
     public bool LastGrabResult;
 
-    // Missed-pinch flash: a dedicated local slot, kept out of DebugManager
-    // (see PrecisionGrab.FlashMiss).
-    public Slot? MissFlashSlot;
-    public IcoSphereMesh? MissFlashMesh;
-    public OverlayFresnelMaterial? MissFlashMaterial;
-    public double MissFlashUntil;
+    // Missed-pinch feedback rig (local slots, built on first miss).
+    public MissEffect? MissEffect;
 
     private static readonly ConditionalWeakTable<InteractionHandler, ProximityGrabState> Table = new();
 

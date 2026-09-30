@@ -23,7 +23,7 @@ internal static class FistGesture
     public static void Update(InteractionHandler handler)
     {
         var state = ProximityGrabState.Get(handler);
-        PrecisionGrab.UpdateMissFlash(handler, state);
+        MissEffect.Update(handler, state);
 
         Devices.Clear();
         handler.World.InputInterface.GetDevices(Devices);
