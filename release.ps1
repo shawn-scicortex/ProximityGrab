@@ -5,11 +5,11 @@ param(
 )
 if (-not ($Release -or $DryRun)) {
     Write-Host @'
-Build ProximityGrab.dll, tag v<Version>, and publish a GitHub release with the DLL.
+Build ProximityGrab.dll, tag v<Version>, and create a draft GitHub release with the DLL (review and publish on github.com).
 Bump <Version> in ProximityGrab\ProximityGrab.csproj and commit first.
 
 Options:
-  -Release        do the release (build, tag, push, gh release create)
+  -Release        make the release (build, tag, push, create draft release)
   -DryRun         build and show what would happen
   -Notes <text>   custom release notes (default: auto-generated)
 
@@ -49,6 +49,6 @@ git tag $tag
 git push origin HEAD $tag
 if ($LASTEXITCODE -ne 0) { throw 'Push failed.' }
 
-$ghArgs = @('release', 'create', $tag, $dll, '-R', $repo, '--title', "ProximityGrab $version")
+$ghArgs = @('release', 'create', $tag, $dll, '-R', $repo, '--title', "ProximityGrab $version", '--draft')
 if ($Notes) { $ghArgs += @('--notes', $Notes) } else { $ghArgs += '--generate-notes' }
 gh @ghArgs
