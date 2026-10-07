@@ -1,15 +1,38 @@
-# Build ProximityGrab.dll in Release, tag the current commit, and publish a GitHub release with the DLL attached.
-#
-# Usage:  bump <Version> in ProximityGrab\ProximityGrab.csproj, commit, then
-#   .\release.ps1              # real release
-#   .\release.ps1 -DryRun      # build + show what would happen
-#   .\release.ps1 -Notes "text"  # custom notes instead of auto-generated
-#
-# One-time setup: winget install GitHub.cli ; gh auth login
+<#
+.SYNOPSIS
+Build ProximityGrab.dll, tag the current commit, and publish a GitHub release with the DLL attached.
+
+.DESCRIPTION
+Workflow: bump <Version> in ProximityGrab\ProximityGrab.csproj, commit, then run with -Release.
+Run with no options to show this help. Requires the GitHub CLI (gh auth login).
+
+.PARAMETER Release
+Actually do the release: build, tag v<Version>, push, create the GitHub release.
+
+.PARAMETER DryRun
+Build and show what would happen, without tagging, pushing or releasing.
+
+.PARAMETER Notes
+Custom release notes instead of auto-generated ones.
+
+.EXAMPLE
+.\release.ps1 -Release
+
+.EXAMPLE
+.\release.ps1 -DryRun
+
+.EXAMPLE
+.\release.ps1 -Release -Notes "Fixes grab miss effect"
+#>
 param(
+    [switch]$Release,
     [switch]$DryRun,
     [string]$Notes
 )
+if (-not ($Release -or $DryRun)) {
+    Get-Help $PSCommandPath -Detailed
+    return
+}
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 
